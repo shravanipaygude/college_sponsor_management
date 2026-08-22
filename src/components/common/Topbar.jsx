@@ -15,8 +15,9 @@ import {
 /**
  * Reusable Topbar component.
  * Accepts currentUser and role-aware tab title resolver.
+ * Experiment 2: Logout button triggers onLogout from AuthContext.
  */
-export default function Topbar({ onOpenMobileSidebar, activeTab, currentUser, notifications: notifData, getTabTitle }) {
+export default function Topbar({ onOpenMobileSidebar, activeTab, currentUser, notifications: notifData, getTabTitle, onLogout }) {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState(notifData || []);
@@ -59,16 +60,6 @@ export default function Topbar({ onOpenMobileSidebar, activeTab, currentUser, no
 
         {/* Right Side Actions */}
         <div className="flex items-center gap-3 sm:gap-4">
-          {/* Search Bar */}
-          <div className="relative hidden sm:block w-48 md:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brown" />
-            <input
-              type="text"
-              placeholder="Search sponsors, events..."
-              className="w-full bg-white/70 border border-taupe/30 rounded-lg pl-9 pr-3 py-1.5 text-xs text-darkBrown placeholder:text-brown/60 focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe transition-all"
-            />
-          </div>
-
           {/* Notification Bell Dropdown */}
           <div className="relative">
             <button
@@ -174,7 +165,7 @@ export default function Topbar({ onOpenMobileSidebar, activeTab, currentUser, no
                   <p className="text-xs font-bold text-espresso">{currentUser?.name}</p>
                   <p className="text-[11px] text-brown">{currentUser?.email}</p>
                   <span className="inline-block mt-1.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-taupe/20 text-darkBrown">
-                    {currentUser?.college} • {currentUser?.role}
+                    {currentUser?.college || currentUser?.company} • {currentUser?.role}
                   </span>
                 </div>
 
@@ -205,7 +196,8 @@ export default function Topbar({ onOpenMobileSidebar, activeTab, currentUser, no
                 <button
                   onClick={() => {
                     setProfileDropdownOpen(false);
-                    alert("Logout clicked (Mock action)");
+                    // Experiment 2: Logout triggers AuthContext logout
+                    if (onLogout) onLogout();
                   }}
                   className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-darkBrown hover:bg-offWhite font-medium transition-colors"
                 >

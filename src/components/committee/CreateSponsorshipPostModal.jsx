@@ -33,6 +33,12 @@ const defaultBenefits = [
   "Workshop / Speaker Slot",
 ];
 
+/**
+ * CreateSponsorshipPostModal — Dynamic form that shows/hides fields
+ * based on the selected contribution type using useState.
+ *
+ * Experiment 2: useState dynamically shows/hides appropriate fields.
+ */
 export default function CreateSponsorshipPostModal({ onClose, onSave }) {
   const [selectedEvent, setSelectedEvent] = useState(committeeEvents[0]?.id || "");
   const [postTitle, setPostTitle] = useState("");
@@ -42,6 +48,14 @@ export default function CreateSponsorshipPostModal({ onClose, onSave }) {
   const [customRequirement, setCustomRequirement] = useState("");
   const [selectedBenefits, setSelectedBenefits] = useState([]);
   const [customBenefit, setCustomBenefit] = useState("");
+
+  // useState manages dynamic contribution-type-specific fields.
+  const [monetaryMin, setMonetaryMin] = useState("");
+  const [monetaryMax, setMonetaryMax] = useState("");
+  const [productsNeeded, setProductsNeeded] = useState("");
+  const [expectedQuantity, setExpectedQuantity] = useState("");
+  const [serviceNeeded, setServiceNeeded] = useState("");
+  const [licenseQuantity, setLicenseQuantity] = useState("");
 
   const toggleType = (id) => {
     setSelectedTypes((prev) =>
@@ -86,8 +100,18 @@ export default function CreateSponsorshipPostModal({ onClose, onSave }) {
       eventDate: event?.date || "TBD",
       lookingFor: selectedRequirements,
       canOffer: selectedBenefits,
+      contributionTypes: selectedTypes,
+      // Dynamic fields
+      monetaryRange: selectedTypes.includes("monetary") ? { min: monetaryMin, max: monetaryMax } : null,
+      productsDetails: selectedTypes.includes("inkind") ? { products: productsNeeded, quantity: expectedQuantity } : null,
+      serviceDetails: selectedTypes.includes("digital") ? { service: serviceNeeded, licenses: licenseQuantity } : null,
     });
   };
+
+  // Check which contribution types are selected for dynamic field rendering
+  const showMonetary = selectedTypes.includes("monetary") || selectedTypes.includes("hybrid");
+  const showInKind = selectedTypes.includes("inkind") || selectedTypes.includes("hybrid");
+  const showDigital = selectedTypes.includes("digital") || selectedTypes.includes("hybrid");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-espresso/70 backdrop-blur-sm">
@@ -162,6 +186,99 @@ export default function CreateSponsorshipPostModal({ onClose, onSave }) {
               ))}
             </div>
           </div>
+
+          {/* ─── Dynamic Contribution-Type Fields ─── */}
+          {/* useState dynamically shows/hides these sections based on selectedTypes */}
+
+          {showMonetary && (
+            <div className="p-4 bg-offWhite/40 rounded-xl border border-taupe/20 space-y-3">
+              <p className="text-[10px] font-bold text-brown uppercase tracking-wider">
+                💰 Monetary Sponsorship Details
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-espresso">Minimum Amount</label>
+                  <input
+                    type="text"
+                    value={monetaryMin}
+                    onChange={(e) => setMonetaryMin(e.target.value)}
+                    placeholder="e.g. ₹25,000"
+                    className="w-full bg-white border border-taupe/30 rounded-lg px-3 py-2 text-xs text-darkBrown placeholder:text-brown/50 focus:outline-none focus:border-taupe"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-espresso">Maximum Amount</label>
+                  <input
+                    type="text"
+                    value={monetaryMax}
+                    onChange={(e) => setMonetaryMax(e.target.value)}
+                    placeholder="e.g. ₹1,00,000"
+                    className="w-full bg-white border border-taupe/30 rounded-lg px-3 py-2 text-xs text-darkBrown placeholder:text-brown/50 focus:outline-none focus:border-taupe"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showInKind && (
+            <div className="p-4 bg-offWhite/40 rounded-xl border border-taupe/20 space-y-3">
+              <p className="text-[10px] font-bold text-brown uppercase tracking-wider">
+                📦 In-Kind / Products Details
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-espresso">Products Needed</label>
+                  <input
+                    type="text"
+                    value={productsNeeded}
+                    onChange={(e) => setProductsNeeded(e.target.value)}
+                    placeholder="e.g. Snack Packs, T-Shirts"
+                    className="w-full bg-white border border-taupe/30 rounded-lg px-3 py-2 text-xs text-darkBrown placeholder:text-brown/50 focus:outline-none focus:border-taupe"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-espresso">Expected Quantity</label>
+                  <input
+                    type="text"
+                    value={expectedQuantity}
+                    onChange={(e) => setExpectedQuantity(e.target.value)}
+                    placeholder="e.g. 500"
+                    className="w-full bg-white border border-taupe/30 rounded-lg px-3 py-2 text-xs text-darkBrown placeholder:text-brown/50 focus:outline-none focus:border-taupe"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showDigital && (
+            <div className="p-4 bg-offWhite/40 rounded-xl border border-taupe/20 space-y-3">
+              <p className="text-[10px] font-bold text-brown uppercase tracking-wider">
+                🌐 Digital / Services Details
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-espresso">Service / Credits Needed</label>
+                  <input
+                    type="text"
+                    value={serviceNeeded}
+                    onChange={(e) => setServiceNeeded(e.target.value)}
+                    placeholder="e.g. Cloud Credits, API Access"
+                    className="w-full bg-white border border-taupe/30 rounded-lg px-3 py-2 text-xs text-darkBrown placeholder:text-brown/50 focus:outline-none focus:border-taupe"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-espresso">Quantity / Number of Licenses</label>
+                  <input
+                    type="text"
+                    value={licenseQuantity}
+                    onChange={(e) => setLicenseQuantity(e.target.value)}
+                    placeholder="e.g. 100 licenses"
+                    className="w-full bg-white border border-taupe/30 rounded-lg px-3 py-2 text-xs text-darkBrown placeholder:text-brown/50 focus:outline-none focus:border-taupe"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Specific Requirements */}
           <div className="space-y-2">

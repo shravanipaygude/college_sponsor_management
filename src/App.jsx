@@ -2,13 +2,16 @@ import React, { useState } from "react";
 import {
   LayoutDashboard, Search, Calendar, FileText, Inbox,
   Handshake, FileCheck, CheckSquare, Settings, Building2,
-  Megaphone, Eye, Clock, History, XCircle, CheckCircle,
+  Megaphone, Eye, Clock, History, XCircle, CheckCircle, Bookmark,
 } from "lucide-react";
+
+// Auth — Experiment 2
+import { useAuth } from "./hooks/useAuth";
+import AuthPage from "./components/auth/AuthPage";
 
 // Common Components
 import Sidebar from "./components/common/Sidebar";
 import Topbar from "./components/common/Topbar";
-import RoleSwitcher from "./components/common/RoleSwitcher";
 
 // Committee Components
 import CommitteeDashboard from "./components/committee/CommitteeDashboard";
@@ -20,6 +23,7 @@ import CommitteePartnerships from "./components/committee/CommitteePartnerships"
 import CommitteeDeals from "./components/committee/CommitteeDeals";
 import CommitteeDeliverables from "./components/committee/CommitteeDeliverables";
 import CommitteeFacultyApprovals from "./components/committee/CommitteeFacultyApprovals";
+import SavedSponsors from "./components/committee/SavedSponsors";
 
 // Sponsor Components
 import SponsorDashboard from "./components/sponsor/SponsorDashboard";
@@ -29,6 +33,7 @@ import SponsorIncomingRequests from "./components/sponsor/SponsorIncomingRequest
 import SponsorPartnerships from "./components/sponsor/SponsorPartnerships";
 import SponsorDeals from "./components/sponsor/SponsorDeals";
 import SponsorDeliverableReview from "./components/sponsor/SponsorDeliverableReview";
+import SavedEvents from "./components/sponsor/SavedEvents";
 
 // Faculty Components
 import FacultyDashboard from "./components/faculty/FacultyDashboard";
@@ -38,7 +43,7 @@ import RejectedDeals from "./components/faculty/RejectedDeals";
 import ApprovalHistory from "./components/faculty/ApprovalHistory";
 
 // Data
-import { mockUsers, notificationsData } from "./data/mockData";
+import { notificationsData } from "./data/mockData";
 
 // ─── Role-Specific Navigation Definitions ────────────────────
 
@@ -52,6 +57,7 @@ const committeeNavItems = [
   { name: "Deals", icon: FileCheck, id: "deals" },
   { name: "Deliverables", icon: CheckSquare, id: "deliverables" },
   { name: "Faculty Approvals", icon: CheckCircle, id: "faculty_approvals" },
+  { name: "Saved Sponsors", icon: Bookmark, id: "saved_sponsors" },
   { name: "Settings", icon: Settings, id: "settings" },
 ];
 
@@ -63,6 +69,7 @@ const sponsorNavItems = [
   { name: "Partnerships", icon: Handshake, id: "partnerships" },
   { name: "Deals", icon: FileCheck, id: "deals" },
   { name: "Deliverables", icon: Eye, id: "deliverables" },
+  { name: "Saved Events", icon: Bookmark, id: "saved_events" },
   { name: "Settings", icon: Settings, id: "settings" },
 ];
 
@@ -88,6 +95,7 @@ const committeeTabTitles = (tab) => {
     deals: { title: "Sponsorship Deals", subtitle: "Manage finalized agreements" },
     deliverables: { title: "Deliverables", subtitle: "Track promised benefits & proof" },
     faculty_approvals: { title: "Faculty Approvals", subtitle: "Track approval status of submitted deals" },
+    saved_sponsors: { title: "Saved Sponsors", subtitle: "Your bookmarked sponsorship opportunities" },
     settings: { title: "Settings", subtitle: "Committee preferences & configuration" },
   };
   return titles[tab] || { title: "Dashboard", subtitle: "SponsorFlow" };
@@ -102,6 +110,7 @@ const sponsorTabTitles = (tab) => {
     partnerships: { title: "Partnerships", subtitle: "Active discussions with colleges" },
     deals: { title: "Sponsorship Deals", subtitle: "Your finalized agreements" },
     deliverables: { title: "Deliverable Review", subtitle: "Review proof from college partners" },
+    saved_events: { title: "Saved Events", subtitle: "Your bookmarked college events" },
     settings: { title: "Settings", subtitle: "Brand preferences & configuration" },
   };
   return titles[tab] || { title: "Dashboard", subtitle: "SponsorFlow" };
@@ -132,20 +141,39 @@ const roleLabels = {
 /**
  * SponsorFlow — College Sponsorship Discovery & Management Portal
  *
- * Temporary role switcher for Experiment 1 UI demonstration.
- * Replace with JWT role-based routing in authentication experiment.
+ * Experiment 2: Authentication via AuthContext replaces the Experiment 1
+ * role switcher. The logged-in user's role determines which interface loads.
  */
 export default function App() {
-  const [currentRole, setCurrentRole] = useState("committee");
+  // useAuth is a custom hook for accessing AuthContext.
+  const { user, role, isAuthenticated, loading, logout } = useAuth();
+
   const [activeTab, setActiveTab] = useState("dashboard");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  // Reset tab to dashboard when role changes
-  const handleRoleChange = (role) => {
-    setCurrentRole(role);
-    setActiveTab("dashboard");
-    setMobileSidebarOpen(false);
-  };
+  // Show loading screen while session is being restored
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-offWhite flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-espresso text-taupe flex items-center justify-center font-bold text-lg mx-auto animate-pulse">
+            SF
+          </div>
+          <p className="text-sm text-brown font-medium">Loading SponsorFlow...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show auth page when not authenticated
+  if (!isAuthenticated) {
+    return <AuthPage />;
+  }
+
+  // ── Authenticated Dashboard ──────────────────────────────────
+
+  // Determine role from authenticated user (NOT from manual switcher)
+  const currentRole = role || "committee";
 
   // Get role-specific config
   const navItems = currentRole === "committee" ? committeeNavItems
@@ -156,7 +184,18 @@ export default function App() {
     : currentRole === "sponsor" ? sponsorTabTitles
     : facultyTabTitles;
 
-  const currentUser = mockUsers[currentRole];
+  // Build currentUser object for Topbar from auth context
+  const currentUser = {
+    name: user?.name || "User",
+    role: user?.roleLabel || roleLabels[currentRole] || "Member",
+    email: user?.email || "",
+    college: user?.college || user?.company || "",
+    avatar: user?.avatar || "SF",
+    committee: user?.committee || "",
+    company: user?.company || "",
+    department: user?.department || "",
+  };
+
   const currentNotifications = notificationsData[currentRole] || [];
 
   // Render role-specific content
@@ -182,6 +221,8 @@ export default function App() {
           return <CommitteeDeliverables />;
         case "faculty_approvals":
           return <CommitteeFacultyApprovals />;
+        case "saved_sponsors":
+          return <SavedSponsors />;
         case "settings":
           return <SettingsPlaceholder role="Committee Head" onBack={() => setActiveTab("dashboard")} />;
         default:
@@ -206,6 +247,8 @@ export default function App() {
           return <SponsorDeals />;
         case "deliverables":
           return <SponsorDeliverableReview />;
+        case "saved_events":
+          return <SavedEvents />;
         case "settings":
           return <SettingsPlaceholder role="Corporate Sponsor" onBack={() => setActiveTab("dashboard")} />;
         default:
@@ -246,6 +289,7 @@ export default function App() {
         setMobileOpen={setMobileSidebarOpen}
         navigationItems={navItems}
         roleLabel={roleLabels[currentRole]}
+        onLogout={logout}
       />
 
       {/* Main Content */}
@@ -257,6 +301,7 @@ export default function App() {
           currentUser={currentUser}
           notifications={currentNotifications}
           getTabTitle={getTabTitle}
+          onLogout={logout}
         />
 
         {/* Page Content */}
@@ -265,8 +310,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* Role Switcher — Temporary for Experiment 1 */}
-      <RoleSwitcher currentRole={currentRole} onRoleChange={handleRoleChange} />
+      {/* Experiment 1 RoleSwitcher removed — role now determined by login */}
     </div>
   );
 }

@@ -14,15 +14,35 @@ const defaultExpectations = [
   "Certificate Branding",
 ];
 
+/**
+ * CreateOpportunityModal — Dynamic form that shows/hides fields
+ * based on the selected contribution type using useState.
+ *
+ * Experiment 2: useState dynamically shows/hides appropriate fields.
+ */
 export default function CreateOpportunityModal({ onClose, onSave }) {
   const [title, setTitle] = useState("");
   const [about, setAbout] = useState("");
   const [selectedEventTypes, setSelectedEventTypes] = useState([]);
   const [customEventType, setCustomEventType] = useState("");
-  const [contributions, setContributions] = useState([{ item: "", type: "Monetary" }]);
+  const [selectedContributionType, setSelectedContributionType] = useState("Monetary");
   const [estimatedValue, setEstimatedValue] = useState("");
   const [selectedExpectations, setSelectedExpectations] = useState([]);
   const [customExpectation, setCustomExpectation] = useState("");
+
+  // useState manages dynamic contribution-type-specific fields.
+  const [monetaryAmount, setMonetaryAmount] = useState("");
+  const [productName, setProductName] = useState("");
+  const [productQuantity, setProductQuantity] = useState("");
+  const [productEstValue, setProductEstValue] = useState("");
+  const [serviceName, setServiceName] = useState("");
+  const [serviceQuantity, setServiceQuantity] = useState("");
+  const [serviceEstValue, setServiceEstValue] = useState("");
+
+  // Hybrid allows multiple contribution entries
+  const [hybridContributions, setHybridContributions] = useState([
+    { type: "Monetary", item: "", quantity: "", value: "" },
+  ]);
 
   const toggleEventType = (type) => {
     setSelectedEventTypes((prev) =>
@@ -50,24 +70,41 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
     }
   };
 
-  const addContribution = () => {
-    setContributions([...contributions, { item: "", type: "Monetary" }]);
+  const addHybridContribution = () => {
+    setHybridContributions([...hybridContributions, { type: "Monetary", item: "", quantity: "", value: "" }]);
   };
 
-  const updateContribution = (idx, field, value) => {
-    setContributions(contributions.map((c, i) => i === idx ? { ...c, [field]: value } : c));
+  const updateHybridContribution = (idx, field, val) => {
+    setHybridContributions(hybridContributions.map((c, i) => i === idx ? { ...c, [field]: val } : c));
   };
 
   const handleSave = () => {
+    // Build contributions based on selected type
+    let canProvide = [];
+    if (selectedContributionType === "Monetary") {
+      canProvide = [{ item: monetaryAmount ? `₹${monetaryAmount} Monetary Support` : "Monetary Support", type: "Monetary" }];
+    } else if (selectedContributionType === "Products") {
+      canProvide = [{ item: `${productQuantity ? productQuantity + " " : ""}${productName}`, type: "In-Kind" }];
+    } else if (selectedContributionType === "Digital / Services") {
+      canProvide = [{ item: `${serviceQuantity ? serviceQuantity + " " : ""}${serviceName}`, type: "Digital" }];
+    } else if (selectedContributionType === "Hybrid") {
+      canProvide = hybridContributions.filter((c) => c.item.trim()).map((c) => ({
+        item: `${c.quantity ? c.quantity + " " : ""}${c.item}`,
+        type: c.type,
+      }));
+    }
+
     onSave({
       title: title || "Untitled Sponsorship Opportunity",
       about,
       interestedIn: selectedEventTypes,
-      canProvide: contributions.filter((c) => c.item.trim()),
+      canProvide,
       expectations: selectedExpectations,
       estimatedValue: estimatedValue || "TBD",
     });
   };
+
+  const inputClass = "w-full bg-white border border-taupe/30 rounded-lg px-3 py-2 text-xs text-darkBrown placeholder:text-brown/50 focus:outline-none focus:border-taupe";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-espresso/70 backdrop-blur-sm">
@@ -145,37 +182,176 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
             </div>
           </div>
 
-          {/* Contributions */}
+          {/* Contribution Type Selection */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-espresso uppercase tracking-wider">What We Can Provide</label>
-            {contributions.map((c, idx) => (
-              <div key={idx} className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              {contributionTypes.map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setSelectedContributionType(type)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    selectedContributionType === type
+                      ? "bg-espresso text-offWhite"
+                      : "bg-offWhite text-darkBrown border border-taupe/30 hover:bg-taupe/20"
+                  }`}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ─── Dynamic Contribution Fields ─── */}
+          {/* useState dynamically shows/hides these sections based on selectedContributionType */}
+
+          {selectedContributionType === "Monetary" && (
+            <div className="p-4 bg-offWhite/40 rounded-xl border border-taupe/20 space-y-3">
+              <p className="text-[10px] font-bold text-brown uppercase tracking-wider">
+                💰 Monetary Details
+              </p>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-espresso">Amount Available</label>
                 <input
                   type="text"
-                  value={c.item}
-                  onChange={(e) => updateContribution(idx, "item", e.target.value)}
-                  placeholder="e.g. ₹20,000 Monetary Support"
-                  className="flex-1 bg-offWhite/50 border border-taupe/30 rounded-lg px-3 py-2 text-xs text-darkBrown placeholder:text-brown/50 focus:outline-none focus:border-taupe"
+                  value={monetaryAmount}
+                  onChange={(e) => setMonetaryAmount(e.target.value)}
+                  placeholder="e.g. 20,000"
+                  className={inputClass}
                 />
-                <select
-                  value={c.type}
-                  onChange={(e) => updateContribution(idx, "type", e.target.value)}
-                  className="bg-offWhite/50 border border-taupe/30 rounded-lg px-2 py-2 text-xs text-darkBrown focus:outline-none focus:border-taupe"
-                >
-                  {contributionTypes.map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
               </div>
-            ))}
-            <button
-              onClick={addContribution}
-              className="text-xs font-bold text-brown hover:text-espresso transition-colors flex items-center gap-1"
-            >
-              <Plus className="w-3 h-3" />
-              Add Another Contribution
-            </button>
-          </div>
+            </div>
+          )}
+
+          {selectedContributionType === "Products" && (
+            <div className="p-4 bg-offWhite/40 rounded-xl border border-taupe/20 space-y-3">
+              <p className="text-[10px] font-bold text-brown uppercase tracking-wider">
+                📦 Products Details
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-espresso">Product</label>
+                  <input
+                    type="text"
+                    value={productName}
+                    onChange={(e) => setProductName(e.target.value)}
+                    placeholder="e.g. Snack Packs"
+                    className={inputClass}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-espresso">Quantity</label>
+                  <input
+                    type="text"
+                    value={productQuantity}
+                    onChange={(e) => setProductQuantity(e.target.value)}
+                    placeholder="e.g. 500"
+                    className={inputClass}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-espresso">Estimated Value</label>
+                  <input
+                    type="text"
+                    value={productEstValue}
+                    onChange={(e) => setProductEstValue(e.target.value)}
+                    placeholder="e.g. ₹20,000"
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {selectedContributionType === "Digital / Services" && (
+            <div className="p-4 bg-offWhite/40 rounded-xl border border-taupe/20 space-y-3">
+              <p className="text-[10px] font-bold text-brown uppercase tracking-wider">
+                🌐 Digital / Services Details
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-espresso">Service / Credits</label>
+                  <input
+                    type="text"
+                    value={serviceName}
+                    onChange={(e) => setServiceName(e.target.value)}
+                    placeholder="e.g. AI Credit Vouchers"
+                    className={inputClass}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-espresso">Quantity</label>
+                  <input
+                    type="text"
+                    value={serviceQuantity}
+                    onChange={(e) => setServiceQuantity(e.target.value)}
+                    placeholder="e.g. 100"
+                    className={inputClass}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-espresso">Estimated Value</label>
+                  <input
+                    type="text"
+                    value={serviceEstValue}
+                    onChange={(e) => setServiceEstValue(e.target.value)}
+                    placeholder="e.g. ₹30,000"
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {selectedContributionType === "Hybrid" && (
+            <div className="p-4 bg-offWhite/40 rounded-xl border border-taupe/20 space-y-3">
+              <p className="text-[10px] font-bold text-brown uppercase tracking-wider">
+                🔄 Hybrid — Combined Contributions
+              </p>
+              {hybridContributions.map((c, idx) => (
+                <div key={idx} className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                  <select
+                    value={c.type}
+                    onChange={(e) => updateHybridContribution(idx, "type", e.target.value)}
+                    className="bg-white border border-taupe/30 rounded-lg px-2 py-2 text-xs text-darkBrown focus:outline-none focus:border-taupe"
+                  >
+                    <option value="Monetary">Monetary</option>
+                    <option value="Products">Products</option>
+                    <option value="Digital">Digital</option>
+                    <option value="Services">Services</option>
+                  </select>
+                  <input
+                    type="text"
+                    value={c.item}
+                    onChange={(e) => updateHybridContribution(idx, "item", e.target.value)}
+                    placeholder="Item / Description"
+                    className={inputClass}
+                  />
+                  <input
+                    type="text"
+                    value={c.quantity}
+                    onChange={(e) => updateHybridContribution(idx, "quantity", e.target.value)}
+                    placeholder="Qty"
+                    className={inputClass}
+                  />
+                  <input
+                    type="text"
+                    value={c.value}
+                    onChange={(e) => updateHybridContribution(idx, "value", e.target.value)}
+                    placeholder="Est. Value"
+                    className={inputClass}
+                  />
+                </div>
+              ))}
+              <button
+                onClick={addHybridContribution}
+                className="text-xs font-bold text-brown hover:text-espresso transition-colors flex items-center gap-1"
+              >
+                <Plus className="w-3 h-3" />
+                Add Another Contribution
+              </button>
+            </div>
+          )}
 
           {/* Estimated Value */}
           <div className="space-y-1.5">

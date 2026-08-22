@@ -10,8 +10,10 @@ import {
  * Reusable Sidebar component.
  * Accepts role-specific navigation items via props.
  * Preserves existing SponsorFlow espresso/taupe design.
+ *
+ * Experiment 2: Logout button triggers onLogout from AuthContext.
  */
-export default function Sidebar({ activeTab, setActiveTab, mobileOpen, setMobileOpen, navigationItems, roleLabel }) {
+export default function Sidebar({ activeTab, setActiveTab, mobileOpen, setMobileOpen, navigationItems, roleLabel, onLogout }) {
   return (
     <>
       {/* Mobile Drawer Overlay */}
@@ -104,7 +106,10 @@ export default function Sidebar({ activeTab, setActiveTab, mobileOpen, setMobile
           </button>
 
           <button
-            onClick={() => alert("Logout clicked (Mock action for Experiment 1)")}
+            onClick={() => {
+              // Experiment 2: Logout triggers AuthContext logout
+              if (onLogout) onLogout();
+            }}
             className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-offWhite/80 hover:bg-darkBrown hover:text-offWhite transition-colors"
           >
             <LogOut className="w-4 h-4 text-taupe" />
