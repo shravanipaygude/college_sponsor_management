@@ -50,7 +50,7 @@ const industryOptions = [
  * password visibility, validation, and loading state.
  * Role is selected ONLY during registration.
  */
-export default function RegisterForm({ onSwitchToLogin }) {
+export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
   // useState manages local form state.
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -58,7 +58,7 @@ export default function RegisterForm({ onSwitchToLogin }) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [selectedRole, setSelectedRole] = useState("");
+  const [selectedRole, setSelectedRole] = useState(initialRole);
 
   // useState manages dynamic role-specific fields.
   const [college, setCollege] = useState("");

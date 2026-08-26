@@ -8,6 +8,7 @@ import {
 // Auth — Experiment 2
 import { useAuth } from "./hooks/useAuth";
 import AuthPage from "./components/auth/AuthPage";
+import LandingPage from "./components/landing/LandingPage";
 
 // Common Components
 import Sidebar from "./components/common/Sidebar";
@@ -151,6 +152,17 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
+  // Unauthenticated view state: "landing" | "auth"
+  const [authViewMode, setAuthViewMode] = useState("landing");
+  const [authInitialView, setAuthInitialView] = useState("login");
+  const [authInitialRole, setAuthInitialRole] = useState("");
+
+  const handleNavigateToAuth = (view = "login", role = "") => {
+    setAuthInitialView(view);
+    setAuthInitialRole(role);
+    setAuthViewMode("auth");
+  };
+
   // Show loading screen while session is being restored
   if (loading) {
     return (
@@ -165,9 +177,18 @@ export default function App() {
     );
   }
 
-  // Show auth page when not authenticated
+  // Show public landing page or auth page when not authenticated
   if (!isAuthenticated) {
-    return <AuthPage />;
+    if (authViewMode === "auth") {
+      return (
+        <AuthPage
+          initialView={authInitialView}
+          initialRole={authInitialRole}
+          onBackToLanding={() => setAuthViewMode("landing")}
+        />
+      );
+    }
+    return <LandingPage onNavigateToAuth={handleNavigateToAuth} />;
   }
 
   // ── Authenticated Dashboard ──────────────────────────────────
