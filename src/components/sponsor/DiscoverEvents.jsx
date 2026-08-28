@@ -7,8 +7,6 @@ import { createPartnershipRequest } from "../../store/slices/requestSlice";
 import { incrementBrandsInterested } from "../../store/slices/sponsorshipSlice";
 import { addNotification } from "../../store/slices/notificationSlice";
 
-// ─── Filter Options ─────────────────────────────────────────
-
 const eventTypeFilters = [
   "All", "Hackathon", "Technical Festival", "Workshop",
   "Cultural Festival", "Sports", "Entrepreneurship", "Other",
@@ -27,24 +25,22 @@ const participantFilters = [
 /**
  * DiscoverEvents — Connected to Redux store.
  * Displays sponsorship posts created by Committee Heads.
- * Allows Sponsors to express interest which dispatches Redux partnership requests.
+ * Restyled with global Light/Dark CSS theme variables.
  */
 export default function DiscoverEvents() {
   const dispatch = useDispatch();
   const sponsorshipPosts = useSelector((state) => state.sponsorship.posts);
   const requests = useSelector((state) => state.requests.items);
 
-  // Local UI state for search, filters & toasts
   const [searchQuery, setSearchQuery] = useState("");
   const [eventTypeFilter, setEventTypeFilter] = useState("All");
   const [sponsorshipFilter, setSponsorshipFilter] = useState("All");
-  const [participantFilter, setParticipantFilter] = useState(0); // index
+  const [participantFilter, setParticipantFilter] = useState(0);
   const [toastMessage, setToastMessage] = useState("");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   const { user } = useAuth();
 
-  // useSavedItems provides reusable save/unsave behavior for events.
   const { toggleSaved, isSaved } = useSavedItems(
     user ? `sf_saved_events_${user.id}` : null
   );
@@ -62,12 +58,10 @@ export default function DiscoverEvents() {
     setParticipantFilter(0);
   };
 
-  // Helper to check if an active interest request has already been sent for this post by current sponsor
   const isInterestExpressed = (post) => {
     const currentSponsorId = user?.id || "demo_sponsor_1";
 
     return requests.some((r) => {
-      // 1. Must be sent by a sponsor role (not an incoming committee request)
       const isSponsorSender =
         r.senderRole === "sponsor" ||
         r.senderRole === "Corporate Sponsor" ||
@@ -75,21 +69,18 @@ export default function DiscoverEvents() {
 
       if (!isSponsorSender) return false;
 
-      // 2. Must be sent by the current logged-in sponsor
       const isCurrentSponsor =
         r.senderId === currentSponsorId ||
         (!user?.id && r.senderId === "demo_sponsor_1");
 
       if (!isCurrentSponsor) return false;
 
-      // 3. Must match the exact sponsorship post / event ID
       const isPostMatch =
         (r.sponsorshipPostId && String(r.sponsorshipPostId) === String(post.id)) ||
         (r.eventId && String(r.eventId) === String(post.id));
 
       if (!isPostMatch) return false;
 
-      // 4. Must be an active request (Pending, Interested, Accepted, Negotiation, New)
       return r.status !== "Declined";
     });
   };
@@ -124,7 +115,6 @@ export default function DiscoverEvents() {
 
     dispatch(incrementBrandsInterested(post.id));
 
-    // Dispatch notifications
     dispatch(
       addNotification({
         role: "Corporate Sponsor",
@@ -145,15 +135,12 @@ export default function DiscoverEvents() {
     setTimeout(() => setToastMessage(""), 4000);
   };
 
-  // ─── Filtering Logic ────────────────────────────────────────
   const filtered = sponsorshipPosts.filter((post) => {
-    // Event type filter
     if (eventTypeFilter !== "All") {
       const typeMatch = post.eventType?.toLowerCase().includes(eventTypeFilter.toLowerCase());
       if (!typeMatch) return false;
     }
 
-    // Sponsorship needed filter
     if (sponsorshipFilter !== "All") {
       const typeMap = {
         "Monetary": "Monetary",
@@ -164,14 +151,12 @@ export default function DiscoverEvents() {
       if (post.sponsorshipNeeded !== typeMap[sponsorshipFilter]) return false;
     }
 
-    // Participant range filter
     if (participantFilter !== 0) {
       const range = participantFilters[participantFilter];
       const val = post.participantsNumeric || 0;
       if (val < range.min || val > range.max) return false;
     }
 
-    // Search filter — match across event name, college name, lookingFor, canOffer
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       const searchable = [
@@ -190,13 +175,10 @@ export default function DiscoverEvents() {
     return true;
   });
 
-  // ─── Filter Controls Component ─────────────────────────────
   const filterControls = (
-    <div className="space-y-3">
-
-      {/* Event Type */}
+    <div className="space-y-4 font-sans-ui">
       <div>
-        <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">
+        <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider mb-1.5">
           Event Type
         </p>
         <div className="flex flex-wrap gap-1.5">
@@ -204,10 +186,10 @@ export default function DiscoverEvents() {
             <button
               key={f}
               onClick={() => setEventTypeFilter(f)}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+              className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold transition-all cursor-pointer ${
                 eventTypeFilter === f
-                  ? "bg-espresso text-offWhite shadow-sm"
-                  : "bg-white text-darkBrown border border-taupe/30 hover:bg-offWhite"
+                  ? "bg-[var(--brand-primary)] text-white shadow-sm"
+                  : "bg-[var(--bg-surface-alt)] text-[var(--text-primary)] border border-[var(--border-subtle)] hover:border-[var(--brand-primary)]"
               }`}
             >
               {f}
@@ -216,9 +198,8 @@ export default function DiscoverEvents() {
         </div>
       </div>
 
-      {/* Sponsorship Needed */}
       <div>
-        <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">
+        <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider mb-1.5">
           Sponsorship Needed
         </p>
         <div className="flex flex-wrap gap-1.5">
@@ -226,10 +207,10 @@ export default function DiscoverEvents() {
             <button
               key={f}
               onClick={() => setSponsorshipFilter(f)}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+              className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold transition-all cursor-pointer ${
                 sponsorshipFilter === f
-                  ? "bg-taupe text-espresso"
-                  : "bg-offWhite text-brown border border-taupe/20 hover:bg-taupe/20"
+                  ? "bg-[var(--brand-primary)] text-white"
+                  : "bg-[var(--bg-surface-alt)] text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:text-[var(--text-primary)]"
               }`}
             >
               {f}
@@ -238,9 +219,8 @@ export default function DiscoverEvents() {
         </div>
       </div>
 
-      {/* Expected Participants */}
       <div>
-        <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">
+        <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider mb-1.5">
           Expected Participants
         </p>
         <div className="flex flex-wrap gap-1.5">
@@ -248,10 +228,10 @@ export default function DiscoverEvents() {
             <button
               key={f.label}
               onClick={() => setParticipantFilter(idx)}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+              className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold transition-all cursor-pointer ${
                 participantFilter === idx
-                  ? "bg-espresso text-offWhite shadow-sm"
-                  : "bg-white text-darkBrown border border-taupe/30 hover:bg-offWhite"
+                  ? "bg-[var(--brand-primary)] text-white shadow-sm"
+                  : "bg-[var(--bg-surface-alt)] text-[var(--text-primary)] border border-[var(--border-subtle)] hover:border-[var(--brand-primary)]"
               }`}
             >
               {f.label}
@@ -260,11 +240,10 @@ export default function DiscoverEvents() {
         </div>
       </div>
 
-      {/* Clear Filters */}
       {hasActiveFilters && (
         <button
           onClick={clearFilters}
-          className="flex items-center gap-1.5 text-xs font-bold text-brown hover:text-espresso transition-colors"
+          className="flex items-center gap-1.5 text-xs font-bold text-[var(--accent-pink)] hover:underline cursor-pointer"
         >
           <X className="w-3.5 h-3.5" />
           Clear Filters
@@ -274,27 +253,27 @@ export default function DiscoverEvents() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans-ui">
       {/* Header with Search */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-taupe/30 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[var(--bg-card)] p-6 rounded-3xl border border-[var(--border-subtle)] shadow-sm">
         <div>
-          <h2 className="text-xl font-bold text-espresso tracking-tight">Discover College Events</h2>
-          <p className="text-xs text-brown mt-1">Browse sponsorship posts from college committees</p>
+          <h2 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">Discover College Events</h2>
+          <p className="text-xs text-[var(--text-secondary)] mt-1">Browse sponsorship posts from college committees</p>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brown" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
             <input
               type="text"
               placeholder="Search events or colleges..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-offWhite/50 border border-taupe/30 rounded-lg pl-9 pr-3 py-2 text-xs text-darkBrown placeholder:text-brown/60 focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe transition-all"
+              className="w-full bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-xl pl-9 pr-3 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] transition-all"
             />
           </div>
           <button
             onClick={() => setShowMobileFilters(!showMobileFilters)}
-            className="sm:hidden p-2 rounded-lg bg-offWhite border border-taupe/30 text-brown hover:bg-taupe/20 transition-colors"
+            className="sm:hidden p-2 rounded-xl bg-[var(--bg-surface-alt)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
           >
             <SlidersHorizontal className="w-4 h-4" />
           </button>
@@ -302,25 +281,25 @@ export default function DiscoverEvents() {
       </div>
 
       {/* Desktop Filters */}
-      <div className="hidden sm:block bg-white p-5 rounded-2xl border border-taupe/30 shadow-sm">
+      <div className="hidden sm:block bg-[var(--bg-card)] p-5 rounded-3xl border border-[var(--border-subtle)] shadow-sm">
         {filterControls}
       </div>
 
       {/* Mobile Filters */}
       {showMobileFilters && (
-        <div className="sm:hidden bg-white p-5 rounded-2xl border border-taupe/30 shadow-sm">
+        <div className="sm:hidden bg-[var(--bg-card)] p-5 rounded-3xl border border-[var(--border-subtle)] shadow-sm">
           {filterControls}
         </div>
       )}
 
-      {/* Notification Banner / Toast */}
+      {/* Notification Toast */}
       {toastMessage && (
-        <div className="bg-espresso text-offWhite px-4 py-3 rounded-xl shadow-md flex items-center justify-between border border-taupe/30">
-          <div className="flex items-center gap-2 text-xs font-semibold">
-            <Check className="w-4 h-4 text-taupe" />
-            {toastMessage}
+        <div className="bg-[var(--brand-primary)] text-white px-5 py-3 rounded-2xl shadow-lg flex items-center justify-between border border-[var(--border-strong)]">
+          <div className="flex items-center gap-2.5 text-xs font-bold">
+            <Check className="w-4 h-4 text-white shrink-0" />
+            <span>{toastMessage}</span>
           </div>
-          <button onClick={() => setToastMessage("")} className="text-taupe hover:text-offWhite">
+          <button onClick={() => setToastMessage("")} className="text-white/80 hover:text-white p-1 cursor-pointer">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -330,50 +309,49 @@ export default function DiscoverEvents() {
       {filtered.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filtered.map((post) => {
-            const expressed = isInterestExpressed(post.id);
+            const expressed = isInterestExpressed(post);
             return (
               <div
                 key={post.id}
-                className="bg-white rounded-2xl border border-taupe/30 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col overflow-hidden"
+                className="bg-[var(--bg-card)] rounded-3xl border border-[var(--border-subtle)] shadow-sm hover:shadow-md hover:border-[var(--brand-primary)] transition-all duration-200 flex flex-col overflow-hidden"
               >
                 {/* Event Header */}
-                <div className="bg-espresso p-4 text-offWhite">
+                <div className="bg-[var(--brand-primary)] p-4 text-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-darkBrown text-taupe flex items-center justify-center font-bold text-sm border border-taupe/30">
+                      <div className="w-10 h-10 rounded-xl bg-white/20 text-white flex items-center justify-center font-bold text-sm border border-white/30">
                         {post.collegeLogo || "VE"}
                       </div>
                       <div>
-                        <h3 className="text-base font-bold">{post.eventName}</h3>
-                        <p className="text-[10px] text-taupe font-medium">{post.collegeName || "VESIT"}</p>
+                        <h3 className="text-base font-bold text-white">{post.eventName}</h3>
+                        <p className="text-[10px] text-white/80 font-medium">{post.collegeName || "VESIT"}</p>
                       </div>
                     </div>
-                    {/* Save/Bookmark Button */}
                     <button
                       onClick={() => toggleSaved(post.id)}
-                      className={`p-1.5 rounded-lg transition-all duration-200 ${
+                      className={`p-2 rounded-xl transition-all duration-200 cursor-pointer ${
                         isSaved(post.id)
-                          ? "text-taupe bg-darkBrown"
-                          : "text-taupe/40 hover:text-taupe hover:bg-darkBrown"
+                          ? "text-[var(--accent-pink)] bg-[var(--accent-pink-bg)]"
+                          : "text-white/70 hover:text-white hover:bg-white/10"
                       }`}
                       title={isSaved(post.id) ? "Saved" : "Save Event"}
                     >
                       <Bookmark
-                        className={`w-4.5 h-4.5 transition-all ${isSaved(post.id) ? "fill-taupe" : ""}`}
+                        className={`w-4.5 h-4.5 ${isSaved(post.id) ? "fill-[var(--accent-pink)]" : ""}`}
                       />
                     </button>
                   </div>
-                  <div className="flex flex-wrap gap-3 mt-3 text-[10px] text-taupe/90">
+                  <div className="flex flex-wrap gap-3 mt-3 text-[10px] text-white/90 font-medium">
                     <span className="flex items-center gap-1">
-                      <Users className="w-3 h-3" />
+                      <Users className="w-3 h-3 text-white" />
                       {post.participants} Expected
                     </span>
                     <span className="flex items-center gap-1">
-                      <Tag className="w-3 h-3" />
+                      <Tag className="w-3 h-3 text-white" />
                       {post.eventType}
                     </span>
                     <span className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
+                      <Calendar className="w-3 h-3 text-white" />
                       {post.eventDate}
                     </span>
                   </div>
@@ -382,20 +360,20 @@ export default function DiscoverEvents() {
                 {/* Post Body */}
                 <div className="p-5 space-y-4 flex-1">
                   <div>
-                    <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">Looking For</p>
+                    <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider mb-1.5">Looking For</p>
                     <div className="flex flex-wrap gap-1.5">
                       {(post.lookingFor || []).map((item, i) => (
-                        <span key={i} className="px-2 py-0.5 bg-offWhite rounded text-[10px] text-darkBrown font-medium border border-taupe/20">
+                        <span key={i} className="px-2 py-0.5 bg-[var(--bg-surface-alt)] rounded text-[10px] text-[var(--text-primary)] font-medium border border-[var(--border-subtle)]">
                           {item}
                         </span>
                       ))}
                     </div>
                   </div>
                   <div>
-                    <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">Can Offer</p>
+                    <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider mb-1.5">Can Offer</p>
                     <div className="flex flex-wrap gap-1.5">
                       {(post.canOffer || []).map((item, i) => (
-                        <span key={i} className="px-2 py-0.5 bg-taupe/10 rounded text-[10px] text-espresso font-medium border border-taupe/20">
+                        <span key={i} className="px-2 py-0.5 bg-[var(--brand-primary)]/15 rounded text-[10px] text-[var(--brand-primary)] font-medium border border-[var(--border-subtle)]">
                           {item}
                         </span>
                       ))}
@@ -404,10 +382,10 @@ export default function DiscoverEvents() {
                 </div>
 
                 {/* Actions */}
-                <div className="p-4 border-t border-taupe/20 flex gap-2">
+                <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] flex gap-2">
                   <button
                     onClick={() => alert(`Viewing event: ${post.eventName}`)}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-espresso bg-offWhite hover:bg-taupe/20 border border-taupe/30 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--bg-surface-alt)] border border-[var(--border-subtle)] transition-colors cursor-pointer"
                   >
                     <Eye className="w-3.5 h-3.5" />
                     View Event
@@ -415,10 +393,10 @@ export default function DiscoverEvents() {
                   <button
                     onClick={() => handleExpressInterest(post)}
                     disabled={expressed}
-                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       expressed
-                        ? "bg-taupe/30 text-brown cursor-not-allowed"
-                        : "bg-espresso text-offWhite hover:bg-darkBrown"
+                        ? "bg-[var(--accent-pink-bg)] text-[var(--accent-pink)] cursor-not-allowed border border-[var(--accent-pink)]/40"
+                        : "bg-[var(--brand-primary)] text-white hover:opacity-90 shadow-md"
                     }`}
                   >
                     <Heart className="w-3.5 h-3.5" />
@@ -430,18 +408,17 @@ export default function DiscoverEvents() {
           })}
         </div>
       ) : (
-        /* Empty State */
-        <div className="bg-white rounded-2xl p-10 border border-taupe/30 text-center space-y-3">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-taupe/15 text-brown mx-auto">
+        <div className="bg-[var(--bg-card)] rounded-3xl p-10 border border-[var(--border-subtle)] text-center space-y-3">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-[var(--brand-primary)]/15 text-[var(--brand-primary)] mx-auto">
             <Search className="w-6 h-6" />
           </div>
-          <h3 className="text-lg font-bold text-espresso">No Events Match Your Filters</h3>
-          <p className="text-sm text-brown max-w-sm mx-auto">
+          <h3 className="text-lg font-bold text-[var(--text-primary)]">No Events Match Your Filters</h3>
+          <p className="text-sm text-[var(--text-secondary)] max-w-sm mx-auto">
             Try changing or clearing your filters to see more results.
           </p>
           <button
             onClick={clearFilters}
-            className="px-4 py-2 bg-taupe text-espresso rounded-xl text-xs font-bold hover:bg-espresso hover:text-offWhite transition-colors"
+            className="px-4 py-2 bg-[var(--brand-primary)] text-white rounded-xl text-xs font-bold hover:opacity-90 transition-colors cursor-pointer"
           >
             Clear Filters
           </button>

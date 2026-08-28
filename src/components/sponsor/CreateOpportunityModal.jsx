@@ -14,12 +14,6 @@ const defaultExpectations = [
   "Certificate Branding",
 ];
 
-/**
- * CreateOpportunityModal — Dynamic form that shows/hides fields
- * based on the selected contribution type using useState.
- *
- * Experiment 2: useState dynamically shows/hides appropriate fields.
- */
 export default function CreateOpportunityModal({ onClose, onSave }) {
   const [title, setTitle] = useState("");
   const [about, setAbout] = useState("");
@@ -30,7 +24,6 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
   const [selectedExpectations, setSelectedExpectations] = useState([]);
   const [customExpectation, setCustomExpectation] = useState("");
 
-  // useState manages dynamic contribution-type-specific fields.
   const [monetaryAmount, setMonetaryAmount] = useState("");
   const [productName, setProductName] = useState("");
   const [productQuantity, setProductQuantity] = useState("");
@@ -39,7 +32,6 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
   const [serviceQuantity, setServiceQuantity] = useState("");
   const [serviceEstValue, setServiceEstValue] = useState("");
 
-  // Hybrid allows multiple contribution entries
   const [hybridContributions, setHybridContributions] = useState([
     { type: "Monetary", item: "", quantity: "", value: "" },
   ]);
@@ -79,7 +71,6 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
   };
 
   const handleSave = () => {
-    // Build contributions based on selected type
     let canProvide = [];
     if (selectedContributionType === "Monetary") {
       canProvide = [{ item: monetaryAmount ? `₹${monetaryAmount} Monetary Support` : "Monetary Support", type: "Monetary" }];
@@ -104,18 +95,18 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
     });
   };
 
-  const inputClass = "w-full bg-white border border-taupe/30 rounded-lg px-3 py-2 text-xs text-darkBrown placeholder:text-brown/50 focus:outline-none focus:border-taupe";
+  const inputClass = "w-full bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-espresso/70 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl border border-taupe/40 max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm font-sans-ui animate-fadeIn">
+      <div className="bg-[var(--bg-card)] rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl border border-[var(--border-strong)] max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="bg-espresso px-6 py-4 text-offWhite flex items-center justify-between shrink-0">
+        <div className="bg-[var(--brand-primary)] px-6 py-4 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
-            <Megaphone className="w-5 h-5 text-taupe" />
-            <h3 className="font-bold text-base tracking-tight">Post Sponsorship Opportunity</h3>
+            <Megaphone className="w-5 h-5 text-white" />
+            <h3 className="font-bold text-base tracking-tight text-white">Post Sponsorship Opportunity</h3>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-taupe hover:text-offWhite hover:bg-darkBrown transition-colors">
+          <button onClick={onClose} className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -124,40 +115,40 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Title */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-espresso uppercase tracking-wider">Opportunity Title</label>
+            <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">Opportunity Title</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. NovaAI College Hackathon Sponsorship Program"
-              className="w-full bg-offWhite/50 border border-taupe/30 rounded-xl px-3 py-2.5 text-sm text-darkBrown placeholder:text-brown/50 focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
+              className="w-full bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-xl px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
             />
           </div>
 
           {/* About */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-espresso uppercase tracking-wider">About</label>
+            <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">About</label>
             <textarea
               value={about}
               onChange={(e) => setAbout(e.target.value)}
               placeholder="Short description of your sponsorship program..."
               rows={3}
-              className="w-full bg-offWhite/50 border border-taupe/30 rounded-xl px-3 py-2.5 text-sm text-darkBrown placeholder:text-brown/50 focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe resize-none"
+              className="w-full bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-xl px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] resize-none"
             />
           </div>
 
           {/* Event Types */}
           <div className="space-y-2">
-            <label className="text-xs font-bold text-espresso uppercase tracking-wider">Events We Are Interested In</label>
+            <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">Events We Are Interested In</label>
             <div className="flex flex-wrap gap-2">
               {eventTypes.map((type) => (
                 <button
                   key={type}
                   onClick={() => toggleEventType(type)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                     selectedEventTypes.includes(type)
-                      ? "bg-espresso text-offWhite"
-                      : "bg-offWhite text-darkBrown border border-taupe/30 hover:bg-taupe/20"
+                      ? "bg-[var(--brand-primary)] text-white shadow-sm"
+                      : "bg-[var(--bg-surface-alt)] text-[var(--text-primary)] border border-[var(--border-subtle)] hover:border-[var(--brand-primary)]"
                   }`}
                 >
                   {type}
@@ -170,13 +161,13 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
                 value={customEventType}
                 onChange={(e) => setCustomEventType(e.target.value)}
                 placeholder="Add custom event type..."
-                className="flex-1 bg-offWhite/50 border border-taupe/30 rounded-lg px-3 py-2 text-xs text-darkBrown placeholder:text-brown/50 focus:outline-none focus:border-taupe"
+                className="flex-1 bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
               />
               <button
                 onClick={addCustomEventType}
-                className="px-3 py-2 rounded-lg text-xs font-bold bg-taupe/20 text-espresso hover:bg-taupe/30 transition-colors flex items-center gap-1"
+                className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[var(--brand-primary)]/15 text-[var(--brand-primary)] hover:bg-[var(--brand-primary)] hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
               >
-                <Plus className="w-3 h-3" />
+                <Plus className="w-3.5 h-3.5" />
                 Add
               </button>
             </div>
@@ -184,16 +175,16 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
 
           {/* Contribution Type Selection */}
           <div className="space-y-2">
-            <label className="text-xs font-bold text-espresso uppercase tracking-wider">What We Can Provide</label>
+            <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">What We Can Provide</label>
             <div className="flex flex-wrap gap-2">
               {contributionTypes.map((type) => (
                 <button
                   key={type}
                   onClick={() => setSelectedContributionType(type)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                     selectedContributionType === type
-                      ? "bg-espresso text-offWhite"
-                      : "bg-offWhite text-darkBrown border border-taupe/30 hover:bg-taupe/20"
+                      ? "bg-[var(--brand-primary)] text-white shadow-sm"
+                      : "bg-[var(--bg-surface-alt)] text-[var(--text-primary)] border border-[var(--border-subtle)] hover:border-[var(--brand-primary)]"
                   }`}
                 >
                   {type}
@@ -202,16 +193,14 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
             </div>
           </div>
 
-          {/* ─── Dynamic Contribution Fields ─── */}
-          {/* useState dynamically shows/hides these sections based on selectedContributionType */}
-
+          {/* Dynamic Contribution Fields */}
           {selectedContributionType === "Monetary" && (
-            <div className="p-4 bg-offWhite/40 rounded-xl border border-taupe/20 space-y-3">
-              <p className="text-[10px] font-bold text-brown uppercase tracking-wider">
+            <div className="p-4 bg-[var(--bg-surface-alt)] rounded-2xl border border-[var(--border-subtle)] space-y-3">
+              <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">
                 💰 Monetary Details
               </p>
               <div className="space-y-1">
-                <label className="text-xs font-bold text-espresso">Amount Available</label>
+                <label className="text-xs font-bold text-[var(--text-primary)]">Amount Available</label>
                 <input
                   type="text"
                   value={monetaryAmount}
@@ -224,13 +213,13 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
           )}
 
           {selectedContributionType === "Products" && (
-            <div className="p-4 bg-offWhite/40 rounded-xl border border-taupe/20 space-y-3">
-              <p className="text-[10px] font-bold text-brown uppercase tracking-wider">
+            <div className="p-4 bg-[var(--bg-surface-alt)] rounded-2xl border border-[var(--border-subtle)] space-y-3">
+              <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">
                 📦 Products Details
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-espresso">Product</label>
+                  <label className="text-xs font-bold text-[var(--text-primary)]">Product</label>
                   <input
                     type="text"
                     value={productName}
@@ -240,7 +229,7 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-espresso">Quantity</label>
+                  <label className="text-xs font-bold text-[var(--text-primary)]">Quantity</label>
                   <input
                     type="text"
                     value={productQuantity}
@@ -250,7 +239,7 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-espresso">Estimated Value</label>
+                  <label className="text-xs font-bold text-[var(--text-primary)]">Estimated Value</label>
                   <input
                     type="text"
                     value={productEstValue}
@@ -264,13 +253,13 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
           )}
 
           {selectedContributionType === "Digital / Services" && (
-            <div className="p-4 bg-offWhite/40 rounded-xl border border-taupe/20 space-y-3">
-              <p className="text-[10px] font-bold text-brown uppercase tracking-wider">
+            <div className="p-4 bg-[var(--bg-surface-alt)] rounded-2xl border border-[var(--border-subtle)] space-y-3">
+              <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">
                 🌐 Digital / Services Details
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-espresso">Service / Credits</label>
+                  <label className="text-xs font-bold text-[var(--text-primary)]">Service / Credits</label>
                   <input
                     type="text"
                     value={serviceName}
@@ -280,7 +269,7 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-espresso">Quantity</label>
+                  <label className="text-xs font-bold text-[var(--text-primary)]">Quantity</label>
                   <input
                     type="text"
                     value={serviceQuantity}
@@ -290,7 +279,7 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-espresso">Estimated Value</label>
+                  <label className="text-xs font-bold text-[var(--text-primary)]">Estimated Value</label>
                   <input
                     type="text"
                     value={serviceEstValue}
@@ -304,8 +293,8 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
           )}
 
           {selectedContributionType === "Hybrid" && (
-            <div className="p-4 bg-offWhite/40 rounded-xl border border-taupe/20 space-y-3">
-              <p className="text-[10px] font-bold text-brown uppercase tracking-wider">
+            <div className="p-4 bg-[var(--bg-surface-alt)] rounded-2xl border border-[var(--border-subtle)] space-y-3">
+              <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">
                 🔄 Hybrid — Combined Contributions
               </p>
               {hybridContributions.map((c, idx) => (
@@ -313,7 +302,7 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
                   <select
                     value={c.type}
                     onChange={(e) => updateHybridContribution(idx, "type", e.target.value)}
-                    className="bg-white border border-taupe/30 rounded-lg px-2 py-2 text-xs text-darkBrown focus:outline-none focus:border-taupe"
+                    className="bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-xl px-2 py-2 text-xs text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
                   >
                     <option value="Monetary">Monetary</option>
                     <option value="Products">Products</option>
@@ -345,9 +334,9 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
               ))}
               <button
                 onClick={addHybridContribution}
-                className="text-xs font-bold text-brown hover:text-espresso transition-colors flex items-center gap-1"
+                className="text-xs font-bold text-[var(--brand-royal)] hover:text-[var(--text-primary)] transition-colors flex items-center gap-1 cursor-pointer"
               >
-                <Plus className="w-3 h-3" />
+                <Plus className="w-3.5 h-3.5" />
                 Add Another Contribution
               </button>
             </div>
@@ -355,34 +344,34 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
 
           {/* Estimated Value */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-espresso uppercase tracking-wider">Estimated Total Value (Optional)</label>
+            <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">Estimated Total Value (Optional)</label>
             <input
               type="text"
               value={estimatedValue}
               onChange={(e) => setEstimatedValue(e.target.value)}
               placeholder="e.g. ₹50,000"
-              className="w-full bg-offWhite/50 border border-taupe/30 rounded-xl px-3 py-2.5 text-sm text-darkBrown placeholder:text-brown/50 focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
+              className="w-full bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-xl px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
             />
           </div>
 
           {/* Expectations */}
           <div className="space-y-2">
-            <label className="text-xs font-bold text-espresso uppercase tracking-wider">What We Expect</label>
+            <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">What We Expect</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {defaultExpectations.map((exp) => (
                 <button
                   key={exp}
                   onClick={() => toggleExpectation(exp)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-left transition-all ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-left transition-all cursor-pointer ${
                     selectedExpectations.includes(exp)
-                      ? "bg-espresso text-offWhite"
-                      : "bg-offWhite text-darkBrown border border-taupe/20 hover:bg-taupe/10"
+                      ? "bg-[var(--brand-primary)] text-white font-bold"
+                      : "bg-[var(--bg-surface-alt)] text-[var(--text-primary)] border border-[var(--border-subtle)] hover:border-[var(--brand-primary)]"
                   }`}
                 >
                   <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-                    selectedExpectations.includes(exp) ? "bg-taupe border-taupe" : "border-taupe/40"
+                    selectedExpectations.includes(exp) ? "bg-white text-[var(--brand-primary)] border-white" : "border-[var(--border-subtle)]"
                   }`}>
-                    {selectedExpectations.includes(exp) && <Check className="w-3 h-3 text-espresso" />}
+                    {selectedExpectations.includes(exp) && <Check className="w-3 h-3 text-[var(--brand-primary)]" />}
                   </div>
                   {exp}
                 </button>
@@ -394,13 +383,13 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
                 value={customExpectation}
                 onChange={(e) => setCustomExpectation(e.target.value)}
                 placeholder="Add custom expectation..."
-                className="flex-1 bg-offWhite/50 border border-taupe/30 rounded-lg px-3 py-2 text-xs text-darkBrown placeholder:text-brown/50 focus:outline-none focus:border-taupe"
+                className="flex-1 bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
               />
               <button
                 onClick={addCustomExpectation}
-                className="px-3 py-2 rounded-lg text-xs font-bold bg-taupe/20 text-espresso hover:bg-taupe/30 transition-colors flex items-center gap-1"
+                className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[var(--brand-primary)]/15 text-[var(--brand-primary)] hover:bg-[var(--brand-primary)] hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
               >
-                <Plus className="w-3 h-3" />
+                <Plus className="w-3.5 h-3.5" />
                 Add
               </button>
             </div>
@@ -408,16 +397,16 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-offWhite/40 border-t border-taupe/20 flex items-center justify-end gap-3 shrink-0">
+        <div className="p-4 bg-[var(--bg-surface-alt)] border-t border-[var(--border-subtle)] flex items-center justify-end gap-3 shrink-0">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-bold text-darkBrown hover:bg-taupe/20 border border-taupe/30 transition-colors"
+            className="px-4 py-2.5 rounded-xl text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] transition-colors cursor-pointer"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 rounded-xl text-xs font-bold bg-espresso text-offWhite hover:bg-darkBrown transition-colors shadow-sm"
+            className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[var(--brand-primary)] text-white hover:opacity-90 transition-colors shadow-md cursor-pointer"
           >
             Publish Opportunity
           </button>

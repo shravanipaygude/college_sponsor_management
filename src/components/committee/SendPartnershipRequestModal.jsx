@@ -24,7 +24,6 @@ const benefitOptions = [
 export default function SendPartnershipRequestModal({ opportunity, onClose, onSubmit }) {
   const [selectedEventId, setSelectedEventId] = useState(committeeEvents[0]?.id || 1);
 
-  // Prefill requested support based on what brand can provide
   const initialRequesting = (opportunity?.canProvide || []).map((item) =>
     typeof item === "string" ? item : item.item || String(item)
   );
@@ -33,7 +32,6 @@ export default function SendPartnershipRequestModal({ opportunity, onClose, onSu
     initialRequesting.length > 0 ? initialRequesting : ["₹20,000 Monetary Support", "AI Credits"]
   );
 
-  // Prefill offered benefits based on what brand is looking for
   const initialOffering = opportunity?.expectations || opportunity?.lookingFor || [];
   const [selectedOffering, setSelectedOffering] = useState(
     initialOffering.length > 0 ? initialOffering : ["Stage Branding", "Instagram Promotion"]
@@ -66,36 +64,36 @@ export default function SendPartnershipRequestModal({ opportunity, onClose, onSu
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-espresso/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
-      <div className="bg-white w-full max-w-xl rounded-2xl border border-taupe/30 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in overflow-y-auto font-sans-ui">
+      <div className="bg-[var(--bg-card)] w-full max-w-xl rounded-3xl border border-[var(--border-strong)] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="bg-espresso p-5 text-offWhite flex items-center justify-between shrink-0">
+        <div className="bg-[var(--brand-primary)] p-5 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-darkBrown text-taupe flex items-center justify-center font-bold text-sm border border-taupe/30">
+            <div className="w-10 h-10 rounded-xl bg-white/20 text-white flex items-center justify-center font-bold text-sm border border-white/30">
               {opportunity?.brandLogo || "NA"}
             </div>
             <div>
-              <h3 className="font-bold text-base text-offWhite">Send Partnership Request</h3>
-              <p className="text-xs text-taupe">Approaching {opportunity?.brandName}</p>
+              <h3 className="font-bold text-base text-white">Send Partnership Request</h3>
+              <p className="text-xs text-white/80">Approaching {opportunity?.brandName}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-taupe hover:text-offWhite hover:bg-darkBrown transition-colors"
+            className="p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Selected Brand Banner */}
-        <div className="bg-offWhite/60 px-5 py-3 border-b border-taupe/20 flex items-center justify-between shrink-0">
+        <div className="bg-[var(--bg-surface-alt)] px-5 py-3 border-b border-[var(--border-subtle)] flex items-center justify-between shrink-0">
           <div>
-            <p className="text-xs font-bold text-espresso">{opportunity?.brandName}</p>
-            <p className="text-[10px] text-brown font-medium uppercase tracking-wider">
+            <p className="text-xs font-bold text-[var(--text-primary)]">{opportunity?.brandName}</p>
+            <p className="text-[10px] font-mono text-[var(--brand-royal)] uppercase tracking-wider">
               {opportunity?.tagline || "Open for College Sponsorships"}
             </p>
           </div>
-          <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-taupe/20 text-espresso border border-taupe/30">
+          <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-[var(--brand-primary)]/15 text-[var(--brand-primary)] border border-[var(--border-subtle)]">
             {opportunity?.contributionType || "Hybrid"}
           </span>
         </div>
@@ -104,13 +102,13 @@ export default function SendPartnershipRequestModal({ opportunity, onClose, onSu
         <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
           {/* Select Event */}
           <div>
-            <label className="block text-xs font-bold text-espresso uppercase tracking-wider mb-2">
+            <label className="block text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider mb-2">
               Select Event
             </label>
             <select
               value={selectedEventId}
               onChange={(e) => setSelectedEventId(e.target.value)}
-              className="w-full bg-offWhite/50 border border-taupe/30 rounded-xl px-3 py-2.5 text-xs text-darkBrown font-medium focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe transition-all"
+              className="w-full bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-xl px-3 py-2.5 text-xs text-[var(--text-primary)] font-medium focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] transition-all"
             >
               {committeeEvents.map((evt) => (
                 <option key={evt.id} value={evt.id}>
@@ -122,10 +120,10 @@ export default function SendPartnershipRequestModal({ opportunity, onClose, onSu
 
           {/* What We Are Requesting */}
           <div>
-            <label className="block text-xs font-bold text-espresso uppercase tracking-wider mb-2">
+            <label className="block text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider mb-2">
               What We Are Requesting
             </label>
-            <p className="text-[11px] text-brown mb-2">Select the support needed from {opportunity?.brandName}:</p>
+            <p className="text-[11px] text-[var(--text-secondary)] mb-2">Select the support needed from {opportunity?.brandName}:</p>
             <div className="flex flex-wrap gap-2">
               {supportOptions.map((opt) => {
                 const selected = selectedRequesting.includes(opt);
@@ -134,13 +132,13 @@ export default function SendPartnershipRequestModal({ opportunity, onClose, onSu
                     type="button"
                     key={opt}
                     onClick={() => toggleRequesting(opt)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
                       selected
-                        ? "bg-espresso text-offWhite shadow-sm"
-                        : "bg-offWhite text-darkBrown border border-taupe/30 hover:bg-taupe/20"
+                        ? "bg-[var(--brand-primary)] text-white shadow-sm"
+                        : "bg-[var(--bg-surface-alt)] text-[var(--text-primary)] border border-[var(--border-subtle)] hover:border-[var(--brand-primary)]"
                     }`}
                   >
-                    {selected && <Check className="w-3.5 h-3.5 text-taupe" />}
+                    {selected && <Check className="w-3.5 h-3.5 text-white" />}
                     {opt}
                   </button>
                 );
@@ -150,10 +148,10 @@ export default function SendPartnershipRequestModal({ opportunity, onClose, onSu
 
           {/* What We Can Offer */}
           <div>
-            <label className="block text-xs font-bold text-espresso uppercase tracking-wider mb-2">
+            <label className="block text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider mb-2">
               What We Can Offer
             </label>
-            <p className="text-[11px] text-brown mb-2">Select benefits your event can provide:</p>
+            <p className="text-[11px] text-[var(--text-secondary)] mb-2">Select benefits your event can provide:</p>
             <div className="flex flex-wrap gap-2">
               {benefitOptions.map((opt) => {
                 const selected = selectedOffering.includes(opt);
@@ -162,13 +160,13 @@ export default function SendPartnershipRequestModal({ opportunity, onClose, onSu
                     type="button"
                     key={opt}
                     onClick={() => toggleOffering(opt)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
                       selected
-                        ? "bg-taupe text-espresso shadow-sm"
-                        : "bg-offWhite text-brown border border-taupe/30 hover:bg-taupe/20"
+                        ? "bg-[var(--brand-primary)] text-white shadow-sm"
+                        : "bg-[var(--bg-surface-alt)] text-[var(--text-primary)] border border-[var(--border-subtle)] hover:border-[var(--brand-primary)]"
                     }`}
                   >
-                    {selected && <Check className="w-3.5 h-3.5 text-espresso" />}
+                    {selected && <Check className="w-3.5 h-3.5 text-white" />}
                     {opt}
                   </button>
                 );
@@ -178,7 +176,7 @@ export default function SendPartnershipRequestModal({ opportunity, onClose, onSu
 
           {/* Message */}
           <div>
-            <label className="block text-xs font-bold text-espresso uppercase tracking-wider mb-2">
+            <label className="block text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider mb-2">
               Message (Optional)
             </label>
             <textarea
@@ -186,24 +184,24 @@ export default function SendPartnershipRequestModal({ opportunity, onClose, onSu
               placeholder="Tell the sponsor briefly why this event would be a good partnership."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              className="w-full bg-offWhite/50 border border-taupe/30 rounded-xl px-3 py-2.5 text-xs text-darkBrown placeholder:text-brown/50 focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe transition-all resize-none"
+              className="w-full bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-xl px-3 py-2.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] transition-all resize-none"
             />
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-taupe/20 shrink-0">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-subtle)] shrink-0">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold text-brown bg-offWhite hover:bg-taupe/20 border border-taupe/30 transition-colors"
+              className="px-4 py-2.5 rounded-xl text-xs font-bold text-[var(--text-secondary)] bg-[var(--bg-surface-alt)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-xl text-xs font-bold bg-espresso text-offWhite hover:bg-darkBrown transition-colors flex items-center gap-2 shadow-sm"
+              className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[var(--brand-primary)] text-white hover:opacity-90 transition-colors flex items-center gap-2 shadow-md cursor-pointer"
             >
-              <Send className="w-3.5 h-3.5 text-taupe" />
+              <Send className="w-3.5 h-3.5 text-white" />
               Send Request
             </button>
           </div>

@@ -4,11 +4,9 @@ import { useAuth } from "../../hooks/useAuth";
 
 /**
  * LoginForm — "Welcome Back" login form for SponsorFlow.
- * Uses useState for form fields, validation, loading, and password visibility.
- * Uses useAuth() custom hook for the login() function.
+ * Uses theme variables for seamless Light & Dark theme support.
  */
 export default function LoginForm({ onSwitchToRegister }) {
-  // useState manages local form and filter state.
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -17,7 +15,6 @@ export default function LoginForm({ onSwitchToRegister }) {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
 
-  // useAuth is a custom hook for accessing AuthContext.
   const { login } = useAuth();
 
   const validate = () => {
@@ -39,8 +36,6 @@ export default function LoginForm({ onSwitchToRegister }) {
     setLoading(true);
     try {
       await login(email, password, rememberMe);
-      // Login success — AuthContext updates isAuthenticated,
-      // App.jsx will automatically render the dashboard.
     } catch (err) {
       setError(err.message || "Login failed. Please try again.");
     } finally {
@@ -49,29 +44,29 @@ export default function LoginForm({ onSwitchToRegister }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5 font-sans-ui">
       {/* Header */}
       <div className="text-center mb-2">
-        <h2 className="text-xl font-bold text-espresso">Welcome Back</h2>
-        <p className="text-xs text-brown mt-1">
+        <h2 className="text-xl font-bold text-[var(--text-primary)]">Welcome Back</h2>
+        <p className="text-xs text-[var(--text-secondary)] mt-1">
           Sign in to continue to SponsorFlow.
         </p>
       </div>
 
       {/* Error Banner */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-xs font-medium">
+        <div className="bg-[var(--accent-pink-bg)] border border-[var(--accent-pink)]/40 text-[var(--accent-pink)] px-4 py-3 rounded-xl text-xs font-medium">
           {error}
         </div>
       )}
 
       {/* Email Field */}
       <div className="space-y-1.5">
-        <label className="text-xs font-bold text-espresso uppercase tracking-wider">
+        <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">
           Email Address
         </label>
         <div className="relative">
-          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brown/60" />
+          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
           <input
             type="email"
             value={email}
@@ -81,10 +76,10 @@ export default function LoginForm({ onSwitchToRegister }) {
               setError("");
             }}
             placeholder="you@example.com"
-            className={`w-full bg-offWhite/50 border rounded-xl pl-10 pr-3 py-2.5 text-sm text-darkBrown placeholder:text-brown/40 focus:outline-none focus:ring-1 transition-all ${
+            className={`w-full bg-[var(--bg-input)] border rounded-xl pl-10 pr-3 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] transition-all ${
               fieldErrors.email
-                ? "border-red-300 focus:border-red-400 focus:ring-red-200"
-                : "border-taupe/30 focus:border-taupe focus:ring-taupe"
+                ? "border-red-400 focus:ring-red-400"
+                : "border-[var(--border-subtle)] focus:border-[var(--brand-primary)]"
             }`}
             autoComplete="email"
           />
@@ -96,11 +91,11 @@ export default function LoginForm({ onSwitchToRegister }) {
 
       {/* Password Field */}
       <div className="space-y-1.5">
-        <label className="text-xs font-bold text-espresso uppercase tracking-wider">
+        <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">
           Password
         </label>
         <div className="relative">
-          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brown/60" />
+          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
           <input
             type={showPassword ? "text" : "password"}
             value={password}
@@ -110,17 +105,17 @@ export default function LoginForm({ onSwitchToRegister }) {
               setError("");
             }}
             placeholder="Enter your password"
-            className={`w-full bg-offWhite/50 border rounded-xl pl-10 pr-10 py-2.5 text-sm text-darkBrown placeholder:text-brown/40 focus:outline-none focus:ring-1 transition-all ${
+            className={`w-full bg-[var(--bg-input)] border rounded-xl pl-10 pr-10 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] transition-all ${
               fieldErrors.password
-                ? "border-red-300 focus:border-red-400 focus:ring-red-200"
-                : "border-taupe/30 focus:border-taupe focus:ring-taupe"
+                ? "border-red-400 focus:ring-red-400"
+                : "border-[var(--border-subtle)] focus:border-[var(--brand-primary)]"
             }`}
             autoComplete="current-password"
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-brown/60 hover:text-espresso transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
             tabIndex={-1}
           >
             {showPassword ? (
@@ -142,11 +137,11 @@ export default function LoginForm({ onSwitchToRegister }) {
           id="rememberMe"
           checked={rememberMe}
           onChange={(e) => setRememberMe(e.target.checked)}
-          className="w-4 h-4 rounded border-taupe/40 text-espresso focus:ring-taupe accent-espresso"
+          className="w-4 h-4 rounded border-[var(--border-subtle)] text-[var(--brand-primary)] focus:ring-[var(--brand-primary)] accent-[var(--brand-primary)] cursor-pointer"
         />
         <label
           htmlFor="rememberMe"
-          className="text-xs text-brown font-medium cursor-pointer select-none"
+          className="text-xs text-[var(--text-secondary)] font-medium cursor-pointer select-none"
         >
           Remember Me
         </label>
@@ -156,7 +151,7 @@ export default function LoginForm({ onSwitchToRegister }) {
       <button
         type="submit"
         disabled={loading}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold bg-espresso text-offWhite hover:bg-darkBrown disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
+        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold bg-[var(--brand-primary)] text-white hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 shadow-md cursor-pointer"
       >
         {loading ? (
           <>
@@ -169,27 +164,27 @@ export default function LoginForm({ onSwitchToRegister }) {
       </button>
 
       {/* Switch to Register */}
-      <p className="text-center text-xs text-brown">
+      <p className="text-center text-xs text-[var(--text-secondary)]">
         Don&apos;t have an account?{" "}
         <button
           type="button"
           onClick={onSwitchToRegister}
-          className="font-bold text-espresso hover:underline"
+          className="font-bold text-[var(--accent-pink)] hover:underline cursor-pointer"
         >
           Create Account
         </button>
       </p>
 
       {/* Demo Accounts Hint */}
-      <div className="mt-4 p-3 bg-offWhite/60 rounded-xl border border-taupe/20">
-        <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">
+      <div className="mt-4 p-3 bg-[var(--bg-surface-alt)] rounded-xl border border-[var(--border-subtle)]">
+        <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider mb-1.5">
           Demo Accounts
         </p>
-        <div className="space-y-1 text-[11px] text-darkBrown/80">
-          <p><span className="font-semibold">Committee:</span> committee@sponsorflow.demo</p>
-          <p><span className="font-semibold">Sponsor:</span> sponsor@sponsorflow.demo</p>
-          <p><span className="font-semibold">Faculty:</span> faculty@sponsorflow.demo</p>
-          <p className="text-brown/60 mt-1">Password: sponsor123</p>
+        <div className="space-y-1 text-[11px] text-[var(--text-secondary)]">
+          <p><span className="font-semibold text-[var(--text-primary)]">Committee:</span> committee@sponsorflow.demo</p>
+          <p><span className="font-semibold text-[var(--text-primary)]">Sponsor:</span> sponsor@sponsorflow.demo</p>
+          <p><span className="font-semibold text-[var(--text-primary)]">Faculty:</span> faculty@sponsorflow.demo</p>
+          <p className="text-[var(--text-muted)] mt-1 font-mono">Password: sponsor123</p>
         </div>
       </div>
     </form>

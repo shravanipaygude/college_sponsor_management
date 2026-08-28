@@ -6,14 +6,19 @@ import { AuthProvider } from './context/AuthContext'
 import { store } from './store/store.js'
 import './index.css'
 
+import { ThemeProvider } from './context/ThemeContext'
+
 // Experiment 3 — Provider setup
 // Provider wraps the application to connect Redux Toolkit store.
-// AuthProvider wraps authentication state (Experiment 2) independently.
+// AuthProvider wraps authentication state independently.
+// ThemeProvider wraps global Light/Dark visual theme state.
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <Provider store={store}>
       <AuthProvider>
-        <App />
+        <ThemeProvider>
+          <App />
+        </ThemeProvider>
       </AuthProvider>
     </Provider>
   </React.StrictMode>,

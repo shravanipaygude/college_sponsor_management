@@ -34,42 +34,38 @@ const valueFilters = [
 /**
  * DiscoverSponsors — Connected to Redux store.
  * Displays brand opportunities published by Corporate Sponsors.
+ * Restyled with global Light/Dark CSS theme variables.
  */
 export default function DiscoverSponsors() {
   const dispatch = useDispatch();
   const brandOpportunities = useSelector((state) => state.sponsorship.opportunities);
   const requests = useSelector((state) => state.requests.items);
 
-  // useState manages local search, filter selections, modal, and feedback
   const [searchQuery, setSearchQuery] = useState("");
   const [contributionFilter, setContributionFilter] = useState("All");
   const [industryFilter, setIndustryFilter] = useState("All");
   const [eventTypeFilter, setEventTypeFilter] = useState("All");
-  const [valueFilter, setValueFilter] = useState(0); // index into valueFilters
+  const [valueFilter, setValueFilter] = useState(0);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [selectedOppForModal, setSelectedOppForModal] = useState(null);
   const [feedbackMessage, setFeedbackMessage] = useState("");
 
   const { user } = useAuth();
 
-  // useSavedItems provides reusable save/unsave behavior for sponsors.
   const { toggleSaved, isSaved } = useSavedItems(
     user ? `sf_saved_sponsors_${user.id}` : null
   );
 
-  // Check if an active request already exists for this opportunity from current Committee user
   const isBrandApproached = (opp) => {
     const currentUserId = user?.id || "demo_committee_1";
 
     return requests.some((r) => {
-      // Must be sent by a committee role and match current user/committee ID
       const isSenderMatch =
         (r.senderRole === "committee" || r.senderRole === "Committee Head") &&
         (r.senderId === currentUserId || (!user?.id && r.senderId === "demo_committee_1"));
 
       if (!isSenderMatch) return false;
 
-      // Match target opportunity ID or brand/receiver identifier
       const isTargetMatch =
         (r.opportunityId && r.opportunityId === opp.id) ||
         (r.receiverId && opp.sponsorId && r.receiverId === opp.sponsorId) ||
@@ -78,7 +74,6 @@ export default function DiscoverSponsors() {
 
       if (!isTargetMatch) return false;
 
-      // Only active requests (non-declined) count as approached
       return r.status !== "Declined";
     });
   };
@@ -140,9 +135,6 @@ export default function DiscoverSponsors() {
     setTimeout(() => setFeedbackMessage(""), 5000);
   };
 
-
-
-  // Check if any filter is active
   const hasActiveFilters =
     searchQuery ||
     contributionFilter !== "All" ||
@@ -158,9 +150,7 @@ export default function DiscoverSponsors() {
     setValueFilter(0);
   };
 
-  // ─── Filtering Logic ────────────────────────────────────────
   const filtered = brandOpportunities.filter((opp) => {
-    // Contribution type filter
     if (contributionFilter !== "All") {
       const typeMap = {
         "Monetary": "Monetary",
@@ -171,13 +161,10 @@ export default function DiscoverSponsors() {
       if (opp.contributionType !== typeMap[contributionFilter]) return false;
     }
 
-
-    // Industry filter
     if (industryFilter !== "All") {
       if (opp.industry !== industryFilter) return false;
     }
 
-    // Event type filter — match against interestedIn array
     if (eventTypeFilter !== "All") {
       const matchTerms = {
         "Hackathons": ["Hackathon", "Hackathons"],
@@ -194,14 +181,12 @@ export default function DiscoverSponsors() {
       if (!matched) return false;
     }
 
-    // Value range filter
     if (valueFilter !== 0) {
       const range = valueFilters[valueFilter];
       const val = opp.estimatedValueNumeric || 0;
       if (val < range.min || val > range.max) return false;
     }
 
-    // Search filter — match across brand name, tagline, category, industry, canProvide, interestedIn
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       const canProvideStrings = (opp.canProvide || []).map((item) =>
@@ -227,12 +212,10 @@ export default function DiscoverSponsors() {
     return true;
   });
 
-  // ─── Filter Controls Component ─────────────────────────────
   const filterControls = (
-    <div className="space-y-3">
-      {/* Contribution Type */}
+    <div className="space-y-4 font-sans-ui">
       <div>
-        <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">
+        <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider mb-1.5">
           Contribution Type
         </p>
         <div className="flex flex-wrap gap-1.5">
@@ -240,10 +223,10 @@ export default function DiscoverSponsors() {
             <button
               key={f}
               onClick={() => setContributionFilter(f)}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+              className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold transition-all cursor-pointer ${
                 contributionFilter === f
-                  ? "bg-espresso text-offWhite shadow-sm"
-                  : "bg-white text-darkBrown border border-taupe/30 hover:bg-offWhite"
+                  ? "bg-[var(--brand-primary)] text-white shadow-sm"
+                  : "bg-[var(--bg-surface-alt)] text-[var(--text-primary)] border border-[var(--border-subtle)] hover:border-[var(--brand-primary)]"
               }`}
             >
               {f}
@@ -252,9 +235,8 @@ export default function DiscoverSponsors() {
         </div>
       </div>
 
-      {/* Industry */}
       <div>
-        <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">
+        <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider mb-1.5">
           Industry
         </p>
         <div className="flex flex-wrap gap-1.5">
@@ -262,10 +244,10 @@ export default function DiscoverSponsors() {
             <button
               key={f}
               onClick={() => setIndustryFilter(f)}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 ${
+              className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold transition-all flex items-center gap-1 cursor-pointer ${
                 industryFilter === f
-                  ? "bg-taupe text-espresso"
-                  : "bg-offWhite text-brown border border-taupe/20 hover:bg-taupe/20"
+                  ? "bg-[var(--brand-primary)] text-white"
+                  : "bg-[var(--bg-surface-alt)] text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:text-[var(--text-primary)]"
               }`}
             >
               {f !== "All" && <Tag className="w-3 h-3" />}
@@ -275,9 +257,8 @@ export default function DiscoverSponsors() {
         </div>
       </div>
 
-      {/* Interested Event Type */}
       <div>
-        <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">
+        <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider mb-1.5">
           Interested Event Type
         </p>
         <div className="flex flex-wrap gap-1.5">
@@ -285,10 +266,10 @@ export default function DiscoverSponsors() {
             <button
               key={f}
               onClick={() => setEventTypeFilter(f)}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+              className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold transition-all cursor-pointer ${
                 eventTypeFilter === f
-                  ? "bg-espresso text-offWhite shadow-sm"
-                  : "bg-white text-darkBrown border border-taupe/30 hover:bg-offWhite"
+                  ? "bg-[var(--brand-primary)] text-white shadow-sm"
+                  : "bg-[var(--bg-surface-alt)] text-[var(--text-primary)] border border-[var(--border-subtle)] hover:border-[var(--brand-primary)]"
               }`}
             >
               {f}
@@ -297,9 +278,8 @@ export default function DiscoverSponsors() {
         </div>
       </div>
 
-      {/* Estimated Value */}
       <div>
-        <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">
+        <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider mb-1.5">
           Estimated Partnership Value
         </p>
         <div className="flex flex-wrap gap-1.5">
@@ -307,10 +287,10 @@ export default function DiscoverSponsors() {
             <button
               key={f.label}
               onClick={() => setValueFilter(idx)}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+              className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold transition-all cursor-pointer ${
                 valueFilter === idx
-                  ? "bg-taupe text-espresso"
-                  : "bg-offWhite text-brown border border-taupe/20 hover:bg-taupe/20"
+                  ? "bg-[var(--brand-primary)] text-white"
+                  : "bg-[var(--bg-surface-alt)] text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:text-[var(--text-primary)]"
               }`}
             >
               {f.label}
@@ -319,11 +299,10 @@ export default function DiscoverSponsors() {
         </div>
       </div>
 
-      {/* Clear Filters */}
       {hasActiveFilters && (
         <button
           onClick={clearFilters}
-          className="flex items-center gap-1.5 text-xs font-bold text-brown hover:text-espresso transition-colors"
+          className="flex items-center gap-1.5 text-xs font-bold text-[var(--accent-pink)] hover:underline cursor-pointer"
         >
           <X className="w-3.5 h-3.5" />
           Clear Filters
@@ -333,17 +312,16 @@ export default function DiscoverSponsors() {
   );
 
   return (
-    <div className="space-y-6">
-      {/* Feedback Alert Banner */}
+    <div className="space-y-6 font-sans-ui">
       {feedbackMessage && (
-        <div className="bg-espresso text-offWhite px-5 py-3 rounded-2xl shadow-md flex items-center justify-between border border-taupe/30">
+        <div className="bg-[var(--brand-primary)] text-white px-5 py-3 rounded-2xl shadow-lg flex items-center justify-between border border-[var(--border-strong)]">
           <div className="flex items-center gap-2.5 text-xs font-bold">
-            <Check className="w-4 h-4 text-taupe shrink-0" />
+            <Check className="w-4 h-4 text-white shrink-0" />
             <span>{feedbackMessage}</span>
           </div>
           <button
             onClick={() => setFeedbackMessage("")}
-            className="text-taupe hover:text-offWhite transition-colors p-1"
+            className="text-white/80 hover:text-white transition-colors p-1 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -351,26 +329,25 @@ export default function DiscoverSponsors() {
       )}
 
       {/* Header with Search */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-taupe/30 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[var(--bg-card)] p-6 rounded-3xl border border-[var(--border-subtle)] shadow-sm">
         <div>
-          <h2 className="text-xl font-bold text-espresso tracking-tight">Discover Sponsors</h2>
-          <p className="text-xs text-brown mt-1">Browse brand sponsorship opportunities</p>
+          <h2 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">Discover Sponsors</h2>
+          <p className="text-xs text-[var(--text-secondary)] mt-1">Browse brand sponsorship opportunities</p>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brown" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
             <input
               type="text"
               placeholder="Search sponsors or opportunities..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-offWhite/50 border border-taupe/30 rounded-lg pl-9 pr-3 py-2 text-xs text-darkBrown placeholder:text-brown/60 focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe transition-all"
+              className="w-full bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-xl pl-9 pr-3 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] transition-all"
             />
           </div>
-          {/* Mobile filter toggle */}
           <button
             onClick={() => setShowMobileFilters(!showMobileFilters)}
-            className="sm:hidden p-2 rounded-lg bg-offWhite border border-taupe/30 text-brown hover:bg-taupe/20 transition-colors"
+            className="sm:hidden p-2 rounded-xl bg-[var(--bg-surface-alt)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
           >
             <SlidersHorizontal className="w-4 h-4" />
           </button>
@@ -378,13 +355,13 @@ export default function DiscoverSponsors() {
       </div>
 
       {/* Desktop Filters */}
-      <div className="hidden sm:block bg-white p-5 rounded-2xl border border-taupe/30 shadow-sm">
+      <div className="hidden sm:block bg-[var(--bg-card)] p-5 rounded-3xl border border-[var(--border-subtle)] shadow-sm">
         {filterControls}
       </div>
 
-      {/* Mobile Filters (collapsible) */}
+      {/* Mobile Filters */}
       {showMobileFilters && (
-        <div className="sm:hidden bg-white p-5 rounded-2xl border border-taupe/30 shadow-sm">
+        <div className="sm:hidden bg-[var(--bg-card)] p-5 rounded-3xl border border-[var(--border-subtle)] shadow-sm">
           {filterControls}
         </div>
       )}
@@ -397,44 +374,43 @@ export default function DiscoverSponsors() {
             return (
               <div
                 key={opp.id}
-                className="bg-white rounded-2xl border border-taupe/30 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col"
+                className="bg-[var(--bg-card)] rounded-3xl border border-[var(--border-subtle)] shadow-sm hover:shadow-md hover:border-[var(--brand-primary)] transition-all duration-200 flex flex-col overflow-hidden"
               >
                 <div className="p-5 space-y-4 flex-1">
                   {/* Brand Header */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-espresso text-taupe flex items-center justify-center font-bold text-sm border border-taupe/30">
+                      <div className="w-12 h-12 rounded-2xl bg-[var(--brand-primary)] text-white flex items-center justify-center font-bold text-sm border border-[var(--border-strong)]">
                         {opp.brandLogo || "NA"}
                       </div>
                       <div>
-                        <h3 className="font-bold text-base text-espresso">{opp.brandName}</h3>
-                        <p className="text-[10px] text-brown font-semibold uppercase tracking-wider">
+                        <h3 className="font-bold text-base text-[var(--text-primary)]">{opp.brandName}</h3>
+                        <p className="text-[10px] font-mono text-[var(--brand-royal)] font-bold uppercase tracking-wider">
                           {opp.tagline || "OPEN FOR COLLEGE SPONSORSHIPS"}
                         </p>
                       </div>
                     </div>
-                    {/* Save/Bookmark Button */}
                     <button
                       onClick={() => toggleSaved(opp.id)}
-                      className={`p-1.5 rounded-lg transition-all duration-200 ${
+                      className={`p-2 rounded-xl transition-all duration-200 cursor-pointer ${
                         isSaved(opp.id)
-                          ? "text-espresso bg-taupe/20"
-                          : "text-brown/40 hover:text-brown hover:bg-offWhite"
+                          ? "text-[var(--accent-pink)] bg-[var(--accent-pink-bg)]"
+                          : "text-[var(--text-secondary)] hover:bg-[var(--bg-surface-alt)]"
                       }`}
                       title={isSaved(opp.id) ? "Saved" : "Save Sponsor"}
                     >
                       <Bookmark
-                        className={`w-4.5 h-4.5 transition-all ${isSaved(opp.id) ? "fill-espresso" : ""}`}
+                        className={`w-4.5 h-4.5 ${isSaved(opp.id) ? "fill-[var(--accent-pink)]" : ""}`}
                       />
                     </button>
                   </div>
 
                   {/* Interested In */}
                   <div>
-                    <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">Interested In</p>
+                    <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider mb-1.5">Interested In</p>
                     <div className="flex flex-wrap gap-1.5">
                       {(opp.interestedIn || []).map((item, i) => (
-                        <span key={i} className="px-2 py-0.5 bg-offWhite rounded text-[10px] text-darkBrown font-medium border border-taupe/20">
+                        <span key={i} className="px-2 py-0.5 bg-[var(--bg-surface-alt)] rounded text-[10px] text-[var(--text-primary)] font-medium border border-[var(--border-subtle)]">
                           {item}
                         </span>
                       ))}
@@ -443,13 +419,13 @@ export default function DiscoverSponsors() {
 
                   {/* Can Provide */}
                   <div>
-                    <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">Can Provide</p>
+                    <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider mb-1.5">Can Provide</p>
                     <ul className="space-y-1">
                       {(opp.canProvide || []).map((item, i) => {
                         const text = typeof item === "string" ? item : item.item || String(item);
                         return (
-                          <li key={i} className="text-xs text-darkBrown flex items-start gap-2">
-                            <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-taupe shrink-0" />
+                          <li key={i} className="text-xs text-[var(--text-primary)] flex items-start gap-2">
+                            <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[var(--brand-primary)] shrink-0" />
                             {text}
                           </li>
                         );
@@ -458,17 +434,17 @@ export default function DiscoverSponsors() {
                   </div>
 
                   {/* Estimated Value */}
-                  <div className="bg-offWhite/50 rounded-lg px-3 py-2 border border-taupe/20">
-                    <p className="text-[10px] font-bold text-brown uppercase">Estimated Value</p>
-                    <p className="text-lg font-black text-espresso">{opp.estimatedValue || "₹50,000"}</p>
+                  <div className="bg-[var(--bg-surface-alt)] rounded-2xl px-3.5 py-2.5 border border-[var(--border-subtle)]">
+                    <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase">Estimated Value</p>
+                    <p className="text-lg font-black text-[var(--text-primary)]">{opp.estimatedValue || "₹50,000"}</p>
                   </div>
 
                   {/* Looking For */}
                   <div>
-                    <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">Looking For</p>
+                    <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider mb-1.5">Looking For</p>
                     <div className="flex flex-wrap gap-1.5">
                       {(opp.lookingFor || opp.expectations || []).map((item, i) => (
-                        <span key={i} className="px-2 py-0.5 bg-taupe/10 rounded text-[10px] text-espresso font-medium border border-taupe/20">
+                        <span key={i} className="px-2 py-0.5 bg-[var(--brand-primary)]/15 rounded text-[10px] text-[var(--brand-primary)] font-medium border border-[var(--border-subtle)]">
                           {item}
                         </span>
                       ))}
@@ -477,10 +453,10 @@ export default function DiscoverSponsors() {
                 </div>
 
                 {/* Actions */}
-                <div className="p-4 border-t border-taupe/20 flex gap-2">
+                <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] flex gap-2">
                   <button
                     onClick={() => alert(`Viewing full opportunity from ${opp.brandName}`)}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-espresso bg-offWhite hover:bg-taupe/20 border border-taupe/30 transition-colors"
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--bg-surface-alt)] border border-[var(--border-subtle)] transition-colors cursor-pointer"
                   >
                     <Eye className="w-3.5 h-3.5" />
                     View Opportunity
@@ -488,20 +464,20 @@ export default function DiscoverSponsors() {
                   <button
                     onClick={() => setSelectedOppForModal(opp)}
                     disabled={isApproached}
-                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       isApproached
-                        ? "bg-taupe/30 text-brown cursor-not-allowed border border-taupe/30"
-                        : "bg-espresso text-offWhite hover:bg-darkBrown shadow-sm"
+                        ? "bg-[var(--accent-pink-bg)] text-[var(--accent-pink)] cursor-not-allowed border border-[var(--accent-pink)]/40"
+                        : "bg-[var(--brand-primary)] text-white hover:opacity-90 shadow-md"
                     }`}
                   >
                     {isApproached ? (
                       <>
-                        <Check className="w-3.5 h-3.5 text-espresso" />
+                        <Check className="w-3.5 h-3.5 text-[var(--accent-pink)]" />
                         Approached
                       </>
                     ) : (
                       <>
-                        <Send className="w-3.5 h-3.5 text-taupe" />
+                        <Send className="w-3.5 h-3.5 text-white" />
                         Approach Brand
                       </>
                     )}
@@ -512,25 +488,23 @@ export default function DiscoverSponsors() {
           })}
         </div>
       ) : (
-        /* Empty State */
-        <div className="bg-white rounded-2xl p-10 border border-taupe/30 text-center space-y-3">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-taupe/15 text-brown mx-auto">
+        <div className="bg-[var(--bg-card)] rounded-3xl p-10 border border-[var(--border-subtle)] text-center space-y-3">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-[var(--brand-primary)]/15 text-[var(--brand-primary)] mx-auto">
             <Search className="w-6 h-6" />
           </div>
-          <h3 className="text-lg font-bold text-espresso">No Sponsors Match Your Filters</h3>
-          <p className="text-sm text-brown max-w-sm mx-auto">
+          <h3 className="text-lg font-bold text-[var(--text-primary)]">No Sponsors Match Your Filters</h3>
+          <p className="text-sm text-[var(--text-secondary)] max-w-sm mx-auto">
             Try changing or clearing your filters to see more results.
           </p>
           <button
             onClick={clearFilters}
-            className="px-4 py-2 bg-taupe text-espresso rounded-xl text-xs font-bold hover:bg-espresso hover:text-offWhite transition-colors"
+            className="px-4 py-2 bg-[var(--brand-primary)] text-white rounded-xl text-xs font-bold hover:opacity-90 transition-colors cursor-pointer"
           >
             Clear Filters
           </button>
         </div>
       )}
 
-      {/* Send Partnership Request Modal */}
       {selectedOppForModal && (
         <SendPartnershipRequestModal
           opportunity={selectedOppForModal}
@@ -541,4 +515,3 @@ export default function DiscoverSponsors() {
     </div>
   );
 }
-

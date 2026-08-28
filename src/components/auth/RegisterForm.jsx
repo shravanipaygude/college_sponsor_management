@@ -44,14 +44,7 @@ const industryOptions = [
   "Other",
 ];
 
-/**
- * RegisterForm — "Create Your SponsorFlow Account" registration form.
- * Uses useState for all form fields, role selection, dynamic role-specific fields,
- * password visibility, validation, and loading state.
- * Role is selected ONLY during registration.
- */
 export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
-  // useState manages local form state.
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -60,14 +53,12 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [selectedRole, setSelectedRole] = useState(initialRole);
 
-  // useState manages dynamic role-specific fields.
   const [college, setCollege] = useState("");
   const [committeeName, setCommitteeName] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [industry, setIndustry] = useState("");
   const [department, setDepartment] = useState("");
 
-  // useState manages validation, loading, and result state.
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
@@ -86,7 +77,6 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
     else if (password !== confirmPassword) errors.confirmPassword = "Passwords don't match";
     if (!selectedRole) errors.role = "Please select a role";
 
-    // Role-specific validation
     if (selectedRole === "committee") {
       if (!college.trim()) errors.college = "College name is required";
       if (!committeeName.trim()) errors.committeeName = "Committee name is required";
@@ -119,7 +109,6 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
         role: selectedRole,
       };
 
-      // Add role-specific fields
       if (selectedRole === "committee") {
         userData.college = college.trim();
         userData.committee = committeeName.trim();
@@ -142,22 +131,21 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
     }
   };
 
-  // Success state
   if (success) {
     return (
-      <div className="text-center space-y-4 py-4">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-taupe/20 text-espresso">
+      <div className="text-center space-y-4 py-4 font-sans-ui">
+        <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-[var(--brand-primary)]/15 text-[var(--brand-primary)]">
           <CheckCircle2 className="w-7 h-7" />
         </div>
-        <h2 className="text-xl font-bold text-espresso">Account Created!</h2>
-        <p className="text-sm text-brown">
+        <h2 className="text-xl font-bold text-[var(--text-primary)]">Account Created!</h2>
+        <p className="text-sm text-[var(--text-secondary)]">
           Your SponsorFlow account has been created successfully.
           <br />
           Sign in with your credentials to get started.
         </p>
         <button
           onClick={onSwitchToLogin}
-          className="px-6 py-2.5 rounded-xl text-sm font-bold bg-espresso text-offWhite hover:bg-darkBrown transition-all shadow-sm"
+          className="px-6 py-2.5 rounded-xl text-sm font-bold bg-[var(--brand-primary)] text-white hover:opacity-90 transition-all shadow-md cursor-pointer"
         >
           Sign In Now
         </button>
@@ -166,35 +154,35 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
   }
 
   const inputClass = (fieldName) =>
-    `w-full bg-offWhite/50 border rounded-xl px-3 py-2.5 text-sm text-darkBrown placeholder:text-brown/40 focus:outline-none focus:ring-1 transition-all ${
+    `w-full bg-[var(--bg-input)] border rounded-xl px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] transition-all ${
       fieldErrors[fieldName]
-        ? "border-red-300 focus:border-red-400 focus:ring-red-200"
-        : "border-taupe/30 focus:border-taupe focus:ring-taupe"
+        ? "border-red-400 focus:ring-red-400"
+        : "border-[var(--border-subtle)] focus:border-[var(--brand-primary)]"
     }`;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5 font-sans-ui">
       {/* Header */}
       <div className="text-center mb-2">
-        <h2 className="text-lg font-bold text-espresso">
+        <h2 className="text-lg font-bold text-[var(--text-primary)]">
           Create Your SponsorFlow Account
         </h2>
       </div>
 
       {/* Error Banner */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-xs font-medium">
+        <div className="bg-[var(--accent-pink-bg)] border border-[var(--accent-pink)]/40 text-[var(--accent-pink)] px-4 py-3 rounded-xl text-xs font-medium">
           {error}
         </div>
       )}
 
       {/* Full Name */}
       <div className="space-y-1.5">
-        <label className="text-xs font-bold text-espresso uppercase tracking-wider">
+        <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">
           Full Name
         </label>
         <div className="relative">
-          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brown/60" />
+          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
           <input
             type="text"
             value={name}
@@ -213,11 +201,11 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
 
       {/* Email */}
       <div className="space-y-1.5">
-        <label className="text-xs font-bold text-espresso uppercase tracking-wider">
+        <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">
           Email Address
         </label>
         <div className="relative">
-          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brown/60" />
+          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
           <input
             type="email"
             value={email}
@@ -238,11 +226,11 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
 
       {/* Password */}
       <div className="space-y-1.5">
-        <label className="text-xs font-bold text-espresso uppercase tracking-wider">
+        <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">
           Password
         </label>
         <div className="relative">
-          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brown/60" />
+          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
           <input
             type={showPassword ? "text" : "password"}
             value={password}
@@ -257,7 +245,7 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-brown/60 hover:text-espresso transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
             tabIndex={-1}
           >
             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -270,11 +258,11 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
 
       {/* Confirm Password */}
       <div className="space-y-1.5">
-        <label className="text-xs font-bold text-espresso uppercase tracking-wider">
+        <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">
           Confirm Password
         </label>
         <div className="relative">
-          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brown/60" />
+          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
           <input
             type={showConfirmPassword ? "text" : "password"}
             value={confirmPassword}
@@ -289,7 +277,7 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
           <button
             type="button"
             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-brown/60 hover:text-espresso transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
             tabIndex={-1}
           >
             {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -302,7 +290,7 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
 
       {/* Role Selection */}
       <div className="space-y-2">
-        <label className="text-xs font-bold text-espresso uppercase tracking-wider">
+        <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">
           I am registering as:
         </label>
         {fieldErrors.role && (
@@ -320,29 +308,29 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
                   setSelectedRole(role.id);
                   setFieldErrors((prev) => ({ ...prev, role: "" }));
                 }}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200 border ${
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200 border cursor-pointer ${
                   isSelected
-                    ? "bg-espresso text-offWhite border-espresso shadow-sm"
-                    : "bg-offWhite/30 text-darkBrown border-taupe/30 hover:bg-offWhite hover:border-taupe/50"
+                    ? "bg-[var(--brand-primary)] text-white border-[var(--brand-primary)] shadow-md"
+                    : "bg-[var(--bg-surface-alt)] text-[var(--text-primary)] border-[var(--border-subtle)] hover:border-[var(--brand-primary)]"
                 }`}
               >
                 <div
                   className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                    isSelected ? "bg-darkBrown text-taupe" : "bg-taupe/20 text-brown"
+                    isSelected ? "bg-white/20 text-white" : "bg-[var(--brand-primary)]/15 text-[var(--brand-primary)]"
                   }`}
                 >
                   <Icon className="w-4.5 h-4.5" />
                 </div>
                 <div>
-                  <p className={`text-sm font-bold ${isSelected ? "text-offWhite" : "text-espresso"}`}>
+                  <p className={`text-sm font-bold ${isSelected ? "text-white" : "text-[var(--text-primary)]"}`}>
                     {role.label}
                   </p>
-                  <p className={`text-[11px] ${isSelected ? "text-taupe" : "text-brown"}`}>
+                  <p className={`text-[11px] ${isSelected ? "text-white/80" : "text-[var(--text-secondary)]"}`}>
                     {role.desc}
                   </p>
                 </div>
                 {isSelected && (
-                  <CheckCircle2 className="w-5 h-5 ml-auto text-taupe shrink-0" />
+                  <CheckCircle2 className="w-5 h-5 ml-auto text-white shrink-0" />
                 )}
               </button>
             );
@@ -351,14 +339,13 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
       </div>
 
       {/* Dynamic Role-Specific Fields */}
-      {/* useState dynamically shows/hides these fields based on selectedRole */}
       {selectedRole === "committee" && (
-        <div className="space-y-4 p-4 bg-offWhite/40 rounded-xl border border-taupe/20">
-          <p className="text-[10px] font-bold text-brown uppercase tracking-wider">
+        <div className="space-y-4 p-4 bg-[var(--bg-surface-alt)] rounded-xl border border-[var(--border-subtle)]">
+          <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">
             Committee Details
           </p>
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-espresso">
+            <label className="text-xs font-bold text-[var(--text-primary)]">
               College / Institute Name
             </label>
             <input
@@ -376,7 +363,7 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
             )}
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-espresso">
+            <label className="text-xs font-bold text-[var(--text-primary)]">
               Committee / Council Name
             </label>
             <input
@@ -397,12 +384,12 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
       )}
 
       {selectedRole === "sponsor" && (
-        <div className="space-y-4 p-4 bg-offWhite/40 rounded-xl border border-taupe/20">
-          <p className="text-[10px] font-bold text-brown uppercase tracking-wider">
+        <div className="space-y-4 p-4 bg-[var(--bg-surface-alt)] rounded-xl border border-[var(--border-subtle)]">
+          <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">
             Brand Details
           </p>
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-espresso">
+            <label className="text-xs font-bold text-[var(--text-primary)]">
               Company / Brand Name
             </label>
             <input
@@ -420,7 +407,7 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
             )}
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-espresso">Industry</label>
+            <label className="text-xs font-bold text-[var(--text-primary)]">Industry</label>
             <select
               value={industry}
               onChange={(e) => {
@@ -444,12 +431,12 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
       )}
 
       {selectedRole === "faculty" && (
-        <div className="space-y-4 p-4 bg-offWhite/40 rounded-xl border border-taupe/20">
-          <p className="text-[10px] font-bold text-brown uppercase tracking-wider">
+        <div className="space-y-4 p-4 bg-[var(--bg-surface-alt)] rounded-xl border border-[var(--border-subtle)]">
+          <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">
             Faculty Details
           </p>
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-espresso">
+            <label className="text-xs font-bold text-[var(--text-primary)]">
               College / Institute Name
             </label>
             <input
@@ -467,7 +454,7 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
             )}
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-espresso">Department</label>
+            <label className="text-xs font-bold text-[var(--text-primary)]">Department</label>
             <input
               type="text"
               value={department}
@@ -489,7 +476,7 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
       <button
         type="submit"
         disabled={loading}
-        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold bg-espresso text-offWhite hover:bg-darkBrown disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
+        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold bg-[var(--brand-primary)] text-white hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-200 shadow-md cursor-pointer"
       >
         {loading ? (
           <>
@@ -502,12 +489,12 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
       </button>
 
       {/* Switch to Login */}
-      <p className="text-center text-xs text-brown">
+      <p className="text-center text-xs text-[var(--text-secondary)]">
         Already have an account?{" "}
         <button
           type="button"
           onClick={onSwitchToLogin}
-          className="font-bold text-espresso hover:underline"
+          className="font-bold text-[var(--accent-pink)] hover:underline cursor-pointer"
         >
           Sign In
         </button>

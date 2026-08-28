@@ -166,12 +166,12 @@ export default function App() {
   // Show loading screen while session is being restored
   if (loading) {
     return (
-      <div className="min-h-screen bg-offWhite flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-primary)] flex items-center justify-center font-sans-ui">
         <div className="text-center space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-espresso text-taupe flex items-center justify-center font-bold text-lg mx-auto animate-pulse">
+          <div className="w-12 h-12 rounded-2xl bg-[var(--brand-primary)] text-white flex items-center justify-center font-bold text-lg mx-auto animate-pulse shadow-lg">
             SF
           </div>
-          <p className="text-sm text-brown font-medium">Loading SponsorFlow...</p>
+          <p className="text-sm text-[var(--text-secondary)] font-medium">Loading SponsorFlow...</p>
         </div>
       </div>
     );
@@ -301,7 +301,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-offWhite text-darkBrown font-sans flex">
+    <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-primary)] font-sans-ui flex">
       {/* Sidebar */}
       <Sidebar
         activeTab={activeTab}
@@ -330,8 +330,6 @@ export default function App() {
           {renderContent()}
         </main>
       </div>
-
-      {/* Experiment 1 RoleSwitcher removed — role now determined by login */}
     </div>
   );
 }
@@ -340,17 +338,17 @@ export default function App() {
 
 function SettingsPlaceholder({ role, onBack }) {
   return (
-    <div className="bg-white rounded-2xl p-8 border border-taupe/30 text-center space-y-3">
-      <div className="w-12 h-12 rounded-full bg-taupe/20 text-espresso mx-auto flex items-center justify-center">
+    <div className="bg-[var(--bg-card)] rounded-3xl p-8 border border-[var(--border-subtle)] text-center space-y-3 font-sans-ui shadow-sm">
+      <div className="w-12 h-12 rounded-2xl bg-[var(--brand-primary)]/15 text-[var(--brand-primary)] mx-auto flex items-center justify-center">
         <Settings className="w-6 h-6" />
       </div>
-      <h2 className="text-xl font-bold text-espresso">{role} Settings</h2>
-      <p className="text-xs text-brown max-w-md mx-auto">
-        Settings configuration for {role}. This section will be expanded in future experiments.
+      <h2 className="text-xl font-bold text-[var(--text-primary)]">{role} Settings</h2>
+      <p className="text-xs text-[var(--text-secondary)] max-w-md mx-auto">
+        Settings configuration for {role}. Manage preferences and account settings here.
       </p>
       <button
         onClick={onBack}
-        className="px-4 py-2 bg-taupe text-espresso rounded-xl text-xs font-bold hover:bg-espresso hover:text-offWhite transition-colors"
+        className="px-4 py-2.5 bg-[var(--brand-primary)] text-white rounded-xl text-xs font-bold hover:opacity-90 transition-colors shadow-sm cursor-pointer"
       >
         Return to Dashboard
       </button>
