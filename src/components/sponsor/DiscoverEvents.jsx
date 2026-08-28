@@ -1,8 +1,11 @@
 import React, { useState } from "react";
-import { Search, Eye, Heart, Users, Calendar, Tag, Bookmark, X, SlidersHorizontal } from "lucide-react";
-import { sponsorshipPostsForBrand } from "../../data/mockData";
+import { useSelector, useDispatch } from "react-redux";
+import { Search, Eye, Heart, Users, Calendar, Tag, Bookmark, X, SlidersHorizontal, Check } from "lucide-react";
 import { useSavedItems } from "../../hooks/useSavedItems";
 import { useAuth } from "../../hooks/useAuth";
+import { createPartnershipRequest } from "../../store/slices/requestSlice";
+import { incrementBrandsInterested } from "../../store/slices/sponsorshipSlice";
+import { addNotification } from "../../store/slices/notificationSlice";
 
 // ─── Filter Options ─────────────────────────────────────────
 
@@ -22,17 +25,21 @@ const participantFilters = [
 ];
 
 /**
- * DiscoverEvents — Enhanced with search, multi-filter, save, and empty states.
- * Uses useState for search query, all filter selections, and interest state.
- * Uses useSavedItems for bookmark functionality.
+ * DiscoverEvents — Connected to Redux store.
+ * Displays sponsorship posts created by Committee Heads.
+ * Allows Sponsors to express interest which dispatches Redux partnership requests.
  */
 export default function DiscoverEvents() {
-  // useState manages local form and filter state.
+  const dispatch = useDispatch();
+  const sponsorshipPosts = useSelector((state) => state.sponsorship.posts);
+  const requests = useSelector((state) => state.requests.items);
+
+  // Local UI state for search, filters & toasts
   const [searchQuery, setSearchQuery] = useState("");
   const [eventTypeFilter, setEventTypeFilter] = useState("All");
   const [sponsorshipFilter, setSponsorshipFilter] = useState("All");
   const [participantFilter, setParticipantFilter] = useState(0); // index
-  const [expressedInterest, setExpressedInterest] = useState([]);
+  const [toastMessage, setToastMessage] = useState("");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
   const { user } = useAuth();
@@ -55,11 +62,94 @@ export default function DiscoverEvents() {
     setParticipantFilter(0);
   };
 
+  // Helper to check if an active interest request has already been sent for this post by current sponsor
+  const isInterestExpressed = (post) => {
+    const currentSponsorId = user?.id || "demo_sponsor_1";
+
+    return requests.some((r) => {
+      // 1. Must be sent by a sponsor role (not an incoming committee request)
+      const isSponsorSender =
+        r.senderRole === "sponsor" ||
+        r.senderRole === "Corporate Sponsor" ||
+        r.senderRole === "brand";
+
+      if (!isSponsorSender) return false;
+
+      // 2. Must be sent by the current logged-in sponsor
+      const isCurrentSponsor =
+        r.senderId === currentSponsorId ||
+        (!user?.id && r.senderId === "demo_sponsor_1");
+
+      if (!isCurrentSponsor) return false;
+
+      // 3. Must match the exact sponsorship post / event ID
+      const isPostMatch =
+        (r.sponsorshipPostId && String(r.sponsorshipPostId) === String(post.id)) ||
+        (r.eventId && String(r.eventId) === String(post.id));
+
+      if (!isPostMatch) return false;
+
+      // 4. Must be an active request (Pending, Interested, Accepted, Negotiation, New)
+      return r.status !== "Declined";
+    });
+  };
+
+  const handleExpressInterest = (post) => {
+    const brandName = user?.company || user?.name || "NovaAI Technologies";
+    const brandLogo = user?.company ? user.company.substring(0, 2).toUpperCase() : "NA";
+
+    dispatch(
+      createPartnershipRequest({
+        sponsorshipPostId: post.id,
+        eventName: post.eventName,
+        collegeName: post.collegeName || "VESIT",
+        collegeLogo: post.collegeLogo || "VE",
+        senderId: user?.id || "demo_sponsor_1",
+        senderName: brandName,
+        senderRole: "sponsor",
+        receiverId: post.committeeId || "demo_committee_1",
+        receiverName: post.collegeName ? `${post.collegeName} Committee` : "CSI Student Chapter",
+        receiverRole: "committee",
+        brandName: brandName,
+        brandLogo: brandLogo,
+        offering: "₹20,000 Monetary + 100 AI Credit Vouchers",
+        interestedIn: post.canOffer ? post.canOffer.slice(0, 3) : ["Main Stage Branding"],
+        requesting: ["Stage Branding", "Instagram Promotion"],
+        theyOffer: post.canOffer ? post.canOffer.slice(0, 3) : ["Main Stage Branding"],
+        estimatedValue: "₹50,000",
+        message: `${brandName} expressed interest in sponsoring ${post.eventName}.`,
+        status: "Pending",
+      })
+    );
+
+    dispatch(incrementBrandsInterested(post.id));
+
+    // Dispatch notifications
+    dispatch(
+      addNotification({
+        role: "Corporate Sponsor",
+        title: "Interest Expressed",
+        message: `Interest sent to ${post.eventName}.`,
+      })
+    );
+
+    dispatch(
+      addNotification({
+        role: "Committee Head",
+        title: "New Partnership Interest",
+        message: `${brandName} expressed interest in ${post.eventName}.`,
+      })
+    );
+
+    setToastMessage(`Interest sent successfully to ${post.eventName}!`);
+    setTimeout(() => setToastMessage(""), 4000);
+  };
+
   // ─── Filtering Logic ────────────────────────────────────────
-  const filtered = sponsorshipPostsForBrand.filter((post) => {
+  const filtered = sponsorshipPosts.filter((post) => {
     // Event type filter
     if (eventTypeFilter !== "All") {
-      const typeMatch = post.eventType.toLowerCase().includes(eventTypeFilter.toLowerCase());
+      const typeMatch = post.eventType?.toLowerCase().includes(eventTypeFilter.toLowerCase());
       if (!typeMatch) return false;
     }
 
@@ -89,8 +179,8 @@ export default function DiscoverEvents() {
         post.collegeName,
         post.eventType,
         post.category,
-        ...post.lookingFor,
-        ...post.canOffer,
+        ...(post.lookingFor || []),
+        ...(post.canOffer || []),
       ]
         .join(" ")
         .toLowerCase();
@@ -103,6 +193,7 @@ export default function DiscoverEvents() {
   // ─── Filter Controls Component ─────────────────────────────
   const filterControls = (
     <div className="space-y-3">
+
       {/* Event Type */}
       <div>
         <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">
@@ -222,108 +313,121 @@ export default function DiscoverEvents() {
         </div>
       )}
 
+      {/* Notification Banner / Toast */}
+      {toastMessage && (
+        <div className="bg-espresso text-offWhite px-4 py-3 rounded-xl shadow-md flex items-center justify-between border border-taupe/30">
+          <div className="flex items-center gap-2 text-xs font-semibold">
+            <Check className="w-4 h-4 text-taupe" />
+            {toastMessage}
+          </div>
+          <button onClick={() => setToastMessage("")} className="text-taupe hover:text-offWhite">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Event Cards */}
       {filtered.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filtered.map((post) => (
-            <div
-              key={post.id}
-              className="bg-white rounded-2xl border border-taupe/30 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col overflow-hidden"
-            >
-              {/* Event Header */}
-              <div className="bg-espresso p-4 text-offWhite">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-darkBrown text-taupe flex items-center justify-center font-bold text-sm border border-taupe/30">
-                      {post.collegeLogo}
+          {filtered.map((post) => {
+            const expressed = isInterestExpressed(post.id);
+            return (
+              <div
+                key={post.id}
+                className="bg-white rounded-2xl border border-taupe/30 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col overflow-hidden"
+              >
+                {/* Event Header */}
+                <div className="bg-espresso p-4 text-offWhite">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-darkBrown text-taupe flex items-center justify-center font-bold text-sm border border-taupe/30">
+                        {post.collegeLogo || "VE"}
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold">{post.eventName}</h3>
+                        <p className="text-[10px] text-taupe font-medium">{post.collegeName || "VESIT"}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-base font-bold">{post.eventName}</h3>
-                      <p className="text-[10px] text-taupe font-medium">{post.collegeName}</p>
+                    {/* Save/Bookmark Button */}
+                    <button
+                      onClick={() => toggleSaved(post.id)}
+                      className={`p-1.5 rounded-lg transition-all duration-200 ${
+                        isSaved(post.id)
+                          ? "text-taupe bg-darkBrown"
+                          : "text-taupe/40 hover:text-taupe hover:bg-darkBrown"
+                      }`}
+                      title={isSaved(post.id) ? "Saved" : "Save Event"}
+                    >
+                      <Bookmark
+                        className={`w-4.5 h-4.5 transition-all ${isSaved(post.id) ? "fill-taupe" : ""}`}
+                      />
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-3 mt-3 text-[10px] text-taupe/90">
+                    <span className="flex items-center gap-1">
+                      <Users className="w-3 h-3" />
+                      {post.participants} Expected
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Tag className="w-3 h-3" />
+                      {post.eventType}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {post.eventDate}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Post Body */}
+                <div className="p-5 space-y-4 flex-1">
+                  <div>
+                    <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">Looking For</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(post.lookingFor || []).map((item, i) => (
+                        <span key={i} className="px-2 py-0.5 bg-offWhite rounded text-[10px] text-darkBrown font-medium border border-taupe/20">
+                          {item}
+                        </span>
+                      ))}
                     </div>
                   </div>
-                  {/* Save/Bookmark Button */}
+                  <div>
+                    <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">Can Offer</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(post.canOffer || []).map((item, i) => (
+                        <span key={i} className="px-2 py-0.5 bg-taupe/10 rounded text-[10px] text-espresso font-medium border border-taupe/20">
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="p-4 border-t border-taupe/20 flex gap-2">
                   <button
-                    onClick={() => toggleSaved(post.id)}
-                    className={`p-1.5 rounded-lg transition-all duration-200 ${
-                      isSaved(post.id)
-                        ? "text-taupe bg-darkBrown"
-                        : "text-taupe/40 hover:text-taupe hover:bg-darkBrown"
-                    }`}
-                    title={isSaved(post.id) ? "Saved" : "Save Event"}
+                    onClick={() => alert(`Viewing event: ${post.eventName}`)}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-espresso bg-offWhite hover:bg-taupe/20 border border-taupe/30 transition-colors"
                   >
-                    <Bookmark
-                      className={`w-4.5 h-4.5 transition-all ${isSaved(post.id) ? "fill-taupe" : ""}`}
-                    />
+                    <Eye className="w-3.5 h-3.5" />
+                    View Event
+                  </button>
+                  <button
+                    onClick={() => handleExpressInterest(post)}
+                    disabled={expressed}
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
+                      expressed
+                        ? "bg-taupe/30 text-brown cursor-not-allowed"
+                        : "bg-espresso text-offWhite hover:bg-darkBrown"
+                    }`}
+                  >
+                    <Heart className="w-3.5 h-3.5" />
+                    {expressed ? "Interest Expressed" : "Express Interest"}
                   </button>
                 </div>
-                <div className="flex flex-wrap gap-3 mt-3 text-[10px] text-taupe/90">
-                  <span className="flex items-center gap-1">
-                    <Users className="w-3 h-3" />
-                    {post.participants} Expected
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Tag className="w-3 h-3" />
-                    {post.eventType}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Calendar className="w-3 h-3" />
-                    {post.eventDate}
-                  </span>
-                </div>
               </div>
-
-              {/* Post Body */}
-              <div className="p-5 space-y-4 flex-1">
-                <div>
-                  <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">Looking For</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {post.lookingFor.map((item, i) => (
-                      <span key={i} className="px-2 py-0.5 bg-offWhite rounded text-[10px] text-darkBrown font-medium border border-taupe/20">
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">Can Offer</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {post.canOffer.map((item, i) => (
-                      <span key={i} className="px-2 py-0.5 bg-taupe/10 rounded text-[10px] text-espresso font-medium border border-taupe/20">
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="p-4 border-t border-taupe/20 flex gap-2">
-                <button
-                  onClick={() => alert(`Viewing event: ${post.eventName}`)}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-espresso bg-offWhite hover:bg-taupe/20 border border-taupe/30 transition-colors"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  View Event
-                </button>
-                <button
-                  onClick={() => {
-                    setExpressedInterest([...expressedInterest, post.id]);
-                    alert(`Interest expressed in ${post.eventName}!`);
-                  }}
-                  disabled={expressedInterest.includes(post.id)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
-                    expressedInterest.includes(post.id)
-                      ? "bg-taupe/30 text-brown cursor-not-allowed"
-                      : "bg-espresso text-offWhite hover:bg-darkBrown"
-                  }`}
-                >
-                  <Heart className="w-3.5 h-3.5" />
-                  {expressedInterest.includes(post.id) ? "Interest Expressed" : "Express Interest"}
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         /* Empty State */

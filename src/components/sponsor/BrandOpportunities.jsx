@@ -1,17 +1,28 @@
 import React, { useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import { Plus, Eye, Edit, Users, Tag } from "lucide-react";
 import StatusBadge from "../common/StatusBadge";
 import CreateOpportunityModal from "./CreateOpportunityModal";
-import { brandOwnOpportunities as initialOpps } from "../../data/mockData";
+import { addBrandOpportunity } from "../../store/slices/sponsorshipSlice";
+import { addNotification } from "../../store/slices/notificationSlice";
 
 export default function BrandOpportunities() {
-  const [opportunities, setOpportunities] = useState(initialOpps);
+  const dispatch = useDispatch();
+  const opportunities = useSelector((state) => state.sponsorship.opportunities);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const handleCreate = (newOpp) => {
-    setOpportunities([...opportunities, { ...newOpp, id: opportunities.length + 1, status: "Active", responses: 0, createdAt: "Just now" }]);
+  const handleCreate = (newOppData) => {
+    dispatch(addBrandOpportunity(newOppData));
+    dispatch(
+      addNotification({
+        role: "Corporate Sponsor",
+        title: "Opportunity Published",
+        message: `Sponsorship opportunity "${newOppData.title}" published.`,
+      })
+    );
     setShowCreateModal(false);
   };
+
 
   return (
     <div className="space-y-6">
@@ -64,27 +75,33 @@ export default function BrandOpportunities() {
               <div>
                 <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">What We Can Provide</p>
                 <ul className="space-y-1">
-                  {opp.canProvide.map((item, i) => (
-                    <li key={i} className="text-xs text-darkBrown flex items-start gap-2">
-                      <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-taupe shrink-0" />
-                      {item.item}
-                      <span className="text-[9px] text-brown bg-offWhite px-1.5 py-0.5 rounded ml-auto shrink-0">{item.type}</span>
-                    </li>
-                  ))}
+                  {(opp.canProvide || []).map((item, i) => {
+                    const text = typeof item === "string" ? item : item.item || String(item);
+                    const typeLabel = typeof item === "object" ? item.type : null;
+                    return (
+                      <li key={i} className="text-xs text-darkBrown flex items-start gap-2">
+                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-taupe shrink-0" />
+                        {text}
+                        {typeLabel && (
+                          <span className="text-[9px] text-brown bg-offWhite px-1.5 py-0.5 rounded ml-auto shrink-0">{typeLabel}</span>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
 
               {/* Estimated Value */}
               <div className="bg-offWhite/50 rounded-lg px-3 py-2 border border-taupe/20 flex items-center justify-between">
                 <span className="text-xs text-brown font-medium">Estimated Value</span>
-                <span className="text-base font-black text-espresso">{opp.estimatedValue}</span>
+                <span className="text-base font-black text-espresso">{opp.estimatedValue || "₹50,000"}</span>
               </div>
 
               {/* Expectations */}
               <div>
                 <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">What We Expect</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {opp.expectations.map((item, i) => (
+                  {(opp.expectations || opp.lookingFor || []).map((item, i) => (
                     <span key={i} className="px-2 py-0.5 bg-taupe/10 rounded text-[10px] text-espresso font-medium border border-taupe/20">
                       {item}
                     </span>

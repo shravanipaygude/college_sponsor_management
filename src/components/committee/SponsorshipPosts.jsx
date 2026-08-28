@@ -1,17 +1,28 @@
 import React, { useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import { Plus, Eye, Edit, Users, Calendar, Tag } from "lucide-react";
 import StatusBadge from "../common/StatusBadge";
 import CreateSponsorshipPostModal from "./CreateSponsorshipPostModal";
-import { sponsorshipPosts as initialPosts } from "../../data/mockData";
+import { addSponsorshipPost } from "../../store/slices/sponsorshipSlice";
+import { addNotification } from "../../store/slices/notificationSlice";
 
 export default function SponsorshipPosts() {
-  const [posts, setPosts] = useState(initialPosts);
+  const dispatch = useDispatch();
+  const posts = useSelector((state) => state.sponsorship.posts);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
-  const handleCreatePost = (newPost) => {
-    setPosts([...posts, { ...newPost, id: posts.length + 1, brandsInterested: 0, status: "Active", createdAt: "Just now" }]);
+  const handleCreatePost = (newPostData) => {
+    dispatch(addSponsorshipPost(newPostData));
+    dispatch(
+      addNotification({
+        role: "Committee Head",
+        title: "Sponsorship Post Created",
+        message: `Sponsorship post for "${newPostData.eventName || newPostData.title}" published.`,
+      })
+    );
     setShowCreateModal(false);
   };
+
 
   return (
     <div className="space-y-6">

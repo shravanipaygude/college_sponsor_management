@@ -692,17 +692,6 @@ export const sponsorshipPostsForBrand = [
 
 export const brandIncomingRequests = [
   {
-    id: 1,
-    eventName: "CSI TechNext 2026",
-    collegeName: "VESIT",
-    collegeLogo: "VE",
-    opportunityTitle: "NovaAI College Hackathon Sponsorship Program",
-    requesting: ["₹20,000 support", "AI Credits"],
-    theyOffer: ["Stage Branding", "Instagram Promotion", "Product Demo"],
-    status: "New",
-    receivedAt: "3 hours ago",
-  },
-  {
     id: 2,
     eventName: "KJSCE Hackathon 2026",
     collegeName: "KJSCE",

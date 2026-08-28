@@ -1,9 +1,13 @@
 import React, { useState } from "react";
-import { Search, Eye, Send, Tag, Bookmark, X, SlidersHorizontal } from "lucide-react";
+import { useSelector, useDispatch } from "react-redux";
+import { Search, Eye, Send, Tag, Bookmark, X, SlidersHorizontal, Check } from "lucide-react";
 import StatusBadge from "../common/StatusBadge";
-import { brandOpportunitiesForCommittee } from "../../data/mockData";
 import { useSavedItems } from "../../hooks/useSavedItems";
 import { useAuth } from "../../hooks/useAuth";
+import { incrementOpportunityResponses } from "../../store/slices/sponsorshipSlice";
+import { createPartnershipRequest } from "../../store/slices/requestSlice";
+import { addNotification } from "../../store/slices/notificationSlice";
+import SendPartnershipRequestModal from "./SendPartnershipRequestModal";
 
 // ─── Filter Options ─────────────────────────────────────────
 
@@ -28,19 +32,23 @@ const valueFilters = [
 ];
 
 /**
- * DiscoverSponsors — Enhanced with search, multi-filter, save, and empty states.
- * Uses useState for search query, all filter selections, and approached brands.
- * Uses useSavedItems for bookmark functionality.
+ * DiscoverSponsors — Connected to Redux store.
+ * Displays brand opportunities published by Corporate Sponsors.
  */
 export default function DiscoverSponsors() {
-  // useState manages local form and filter state.
+  const dispatch = useDispatch();
+  const brandOpportunities = useSelector((state) => state.sponsorship.opportunities);
+  const requests = useSelector((state) => state.requests.items);
+
+  // useState manages local search, filter selections, modal, and feedback
   const [searchQuery, setSearchQuery] = useState("");
   const [contributionFilter, setContributionFilter] = useState("All");
   const [industryFilter, setIndustryFilter] = useState("All");
   const [eventTypeFilter, setEventTypeFilter] = useState("All");
   const [valueFilter, setValueFilter] = useState(0); // index into valueFilters
-  const [approachedBrands, setApproachedBrands] = useState([]);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [selectedOppForModal, setSelectedOppForModal] = useState(null);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
 
   const { user } = useAuth();
 
@@ -48,6 +56,91 @@ export default function DiscoverSponsors() {
   const { toggleSaved, isSaved } = useSavedItems(
     user ? `sf_saved_sponsors_${user.id}` : null
   );
+
+  // Check if an active request already exists for this opportunity from current Committee user
+  const isBrandApproached = (opp) => {
+    const currentUserId = user?.id || "demo_committee_1";
+
+    return requests.some((r) => {
+      // Must be sent by a committee role and match current user/committee ID
+      const isSenderMatch =
+        (r.senderRole === "committee" || r.senderRole === "Committee Head") &&
+        (r.senderId === currentUserId || (!user?.id && r.senderId === "demo_committee_1"));
+
+      if (!isSenderMatch) return false;
+
+      // Match target opportunity ID or brand/receiver identifier
+      const isTargetMatch =
+        (r.opportunityId && r.opportunityId === opp.id) ||
+        (r.receiverId && opp.sponsorId && r.receiverId === opp.sponsorId) ||
+        (r.brandName && opp.brandName && r.brandName.toLowerCase() === opp.brandName.toLowerCase()) ||
+        (r.receiverName && opp.brandName && r.receiverName.toLowerCase() === opp.brandName.toLowerCase());
+
+      if (!isTargetMatch) return false;
+
+      // Only active requests (non-declined) count as approached
+      return r.status !== "Declined";
+    });
+  };
+
+  const handleModalSubmit = (formData) => {
+    if (!selectedOppForModal) return;
+
+    const opp = selectedOppForModal;
+    const brandName = opp.brandName || "Corporate Sponsor";
+    const brandLogo = opp.brandLogo || "NA";
+    const eventObj = formData.event;
+
+    dispatch(
+      createPartnershipRequest({
+        opportunityId: opp.id,
+        opportunityTitle: opp.tagline || `${brandName} Sponsorship Program`,
+        eventId: eventObj.id,
+        eventName: eventObj.name,
+        collegeName: user?.college || "VESIT",
+        collegeLogo: "VE",
+        senderId: user?.id || "demo_committee_1",
+        senderName: user?.committee || user?.name || "CSI Student Chapter",
+        senderRole: "committee",
+        receiverId: opp.sponsorId || "demo_sponsor_1",
+        receiverName: brandName,
+        receiverRole: "sponsor",
+        brandName: brandName,
+        brandLogo: brandLogo,
+        requesting: formData.requesting,
+        theyOffer: formData.offering,
+        offering: formData.requesting.join(" + "),
+        interestedIn: formData.offering,
+        estimatedValue: opp.estimatedValue || "₹50,000",
+        message: formData.message || `CSI Student Chapter requested partnership with ${brandName} for ${eventObj.name}.`,
+        status: "Pending",
+      })
+    );
+
+    dispatch(incrementOpportunityResponses(opp.id));
+
+    dispatch(
+      addNotification({
+        role: "Committee Head",
+        title: "Partnership Request Sent",
+        message: `Approached ${brandName} for ${eventObj.name}.`,
+      })
+    );
+
+    dispatch(
+      addNotification({
+        role: "Corporate Sponsor",
+        title: "New Incoming Request",
+        message: `VESIT CSI Student Chapter approached ${brandName} for ${eventObj.name}.`,
+      })
+    );
+
+    setSelectedOppForModal(null);
+    setFeedbackMessage(`Partnership request sent to ${brandName}.`);
+    setTimeout(() => setFeedbackMessage(""), 5000);
+  };
+
+
 
   // Check if any filter is active
   const hasActiveFilters =
@@ -66,7 +159,7 @@ export default function DiscoverSponsors() {
   };
 
   // ─── Filtering Logic ────────────────────────────────────────
-  const filtered = brandOpportunitiesForCommittee.filter((opp) => {
+  const filtered = brandOpportunities.filter((opp) => {
     // Contribution type filter
     if (contributionFilter !== "All") {
       const typeMap = {
@@ -77,6 +170,7 @@ export default function DiscoverSponsors() {
       };
       if (opp.contributionType !== typeMap[contributionFilter]) return false;
     }
+
 
     // Industry filter
     if (industryFilter !== "All") {
@@ -94,8 +188,8 @@ export default function DiscoverSponsors() {
         "Entrepreneurship Events": ["Entrepreneurship", "Entrepreneurship Events"],
       };
       const terms = matchTerms[eventTypeFilter] || [eventTypeFilter];
-      const matched = opp.interestedIn.some((item) =>
-        terms.some((t) => item.toLowerCase().includes(t.toLowerCase()))
+      const matched = (opp.interestedIn || []).some((item) =>
+        terms.some((t) => (item || "").toLowerCase().includes(t.toLowerCase()))
       );
       if (!matched) return false;
     }
@@ -110,16 +204,21 @@ export default function DiscoverSponsors() {
     // Search filter — match across brand name, tagline, category, industry, canProvide, interestedIn
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
+      const canProvideStrings = (opp.canProvide || []).map((item) =>
+        typeof item === "string" ? item : item.item || ""
+      );
+      const lookingForStrings = opp.lookingFor || opp.expectations || [];
       const searchable = [
         opp.brandName,
         opp.tagline,
         opp.category,
         opp.industry,
         opp.contributionType,
-        ...opp.canProvide,
-        ...opp.interestedIn,
-        ...opp.lookingFor,
+        ...canProvideStrings,
+        ...(opp.interestedIn || []),
+        ...lookingForStrings,
       ]
+        .filter(Boolean)
         .join(" ")
         .toLowerCase();
       if (!searchable.includes(q)) return false;
@@ -235,6 +334,22 @@ export default function DiscoverSponsors() {
 
   return (
     <div className="space-y-6">
+      {/* Feedback Alert Banner */}
+      {feedbackMessage && (
+        <div className="bg-espresso text-offWhite px-5 py-3 rounded-2xl shadow-md flex items-center justify-between border border-taupe/30">
+          <div className="flex items-center gap-2.5 text-xs font-bold">
+            <Check className="w-4 h-4 text-taupe shrink-0" />
+            <span>{feedbackMessage}</span>
+          </div>
+          <button
+            onClick={() => setFeedbackMessage("")}
+            className="text-taupe hover:text-offWhite transition-colors p-1"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Header with Search */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-taupe/30 shadow-sm">
         <div>
@@ -277,110 +392,124 @@ export default function DiscoverSponsors() {
       {/* Brand Opportunity Cards */}
       {filtered.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filtered.map((opp) => (
-            <div
-              key={opp.id}
-              className="bg-white rounded-2xl border border-taupe/30 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col"
-            >
-              <div className="p-5 space-y-4 flex-1">
-                {/* Brand Header */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-espresso text-taupe flex items-center justify-center font-bold text-sm border border-taupe/30">
-                      {opp.brandLogo}
+          {filtered.map((opp) => {
+            const isApproached = isBrandApproached(opp);
+            return (
+              <div
+                key={opp.id}
+                className="bg-white rounded-2xl border border-taupe/30 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 flex flex-col"
+              >
+                <div className="p-5 space-y-4 flex-1">
+                  {/* Brand Header */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-xl bg-espresso text-taupe flex items-center justify-center font-bold text-sm border border-taupe/30">
+                        {opp.brandLogo || "NA"}
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-base text-espresso">{opp.brandName}</h3>
+                        <p className="text-[10px] text-brown font-semibold uppercase tracking-wider">
+                          {opp.tagline || "OPEN FOR COLLEGE SPONSORSHIPS"}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-bold text-base text-espresso">{opp.brandName}</h3>
-                      <p className="text-[10px] text-brown font-semibold uppercase tracking-wider">{opp.tagline}</p>
+                    {/* Save/Bookmark Button */}
+                    <button
+                      onClick={() => toggleSaved(opp.id)}
+                      className={`p-1.5 rounded-lg transition-all duration-200 ${
+                        isSaved(opp.id)
+                          ? "text-espresso bg-taupe/20"
+                          : "text-brown/40 hover:text-brown hover:bg-offWhite"
+                      }`}
+                      title={isSaved(opp.id) ? "Saved" : "Save Sponsor"}
+                    >
+                      <Bookmark
+                        className={`w-4.5 h-4.5 transition-all ${isSaved(opp.id) ? "fill-espresso" : ""}`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Interested In */}
+                  <div>
+                    <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">Interested In</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(opp.interestedIn || []).map((item, i) => (
+                        <span key={i} className="px-2 py-0.5 bg-offWhite rounded text-[10px] text-darkBrown font-medium border border-taupe/20">
+                          {item}
+                        </span>
+                      ))}
                     </div>
                   </div>
-                  {/* Save/Bookmark Button */}
+
+                  {/* Can Provide */}
+                  <div>
+                    <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">Can Provide</p>
+                    <ul className="space-y-1">
+                      {(opp.canProvide || []).map((item, i) => {
+                        const text = typeof item === "string" ? item : item.item || String(item);
+                        return (
+                          <li key={i} className="text-xs text-darkBrown flex items-start gap-2">
+                            <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-taupe shrink-0" />
+                            {text}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+
+                  {/* Estimated Value */}
+                  <div className="bg-offWhite/50 rounded-lg px-3 py-2 border border-taupe/20">
+                    <p className="text-[10px] font-bold text-brown uppercase">Estimated Value</p>
+                    <p className="text-lg font-black text-espresso">{opp.estimatedValue || "₹50,000"}</p>
+                  </div>
+
+                  {/* Looking For */}
+                  <div>
+                    <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">Looking For</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(opp.lookingFor || opp.expectations || []).map((item, i) => (
+                        <span key={i} className="px-2 py-0.5 bg-taupe/10 rounded text-[10px] text-espresso font-medium border border-taupe/20">
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="p-4 border-t border-taupe/20 flex gap-2">
                   <button
-                    onClick={() => toggleSaved(opp.id)}
-                    className={`p-1.5 rounded-lg transition-all duration-200 ${
-                      isSaved(opp.id)
-                        ? "text-espresso bg-taupe/20"
-                        : "text-brown/40 hover:text-brown hover:bg-offWhite"
-                    }`}
-                    title={isSaved(opp.id) ? "Saved" : "Save Sponsor"}
+                    onClick={() => alert(`Viewing full opportunity from ${opp.brandName}`)}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-espresso bg-offWhite hover:bg-taupe/20 border border-taupe/30 transition-colors"
                   >
-                    <Bookmark
-                      className={`w-4.5 h-4.5 transition-all ${isSaved(opp.id) ? "fill-espresso" : ""}`}
-                    />
+                    <Eye className="w-3.5 h-3.5" />
+                    View Opportunity
+                  </button>
+                  <button
+                    onClick={() => setSelectedOppForModal(opp)}
+                    disabled={isApproached}
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
+                      isApproached
+                        ? "bg-taupe/30 text-brown cursor-not-allowed border border-taupe/30"
+                        : "bg-espresso text-offWhite hover:bg-darkBrown shadow-sm"
+                    }`}
+                  >
+                    {isApproached ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-espresso" />
+                        Approached
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-3.5 h-3.5 text-taupe" />
+                        Approach Brand
+                      </>
+                    )}
                   </button>
                 </div>
-
-                {/* Interested In */}
-                <div>
-                  <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">Interested In</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {opp.interestedIn.map((item, i) => (
-                      <span key={i} className="px-2 py-0.5 bg-offWhite rounded text-[10px] text-darkBrown font-medium border border-taupe/20">
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Can Provide */}
-                <div>
-                  <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">Can Provide</p>
-                  <ul className="space-y-1">
-                    {opp.canProvide.map((item, i) => (
-                      <li key={i} className="text-xs text-darkBrown flex items-start gap-2">
-                        <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-taupe shrink-0" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Estimated Value */}
-                <div className="bg-offWhite/50 rounded-lg px-3 py-2 border border-taupe/20">
-                  <p className="text-[10px] font-bold text-brown uppercase">Estimated Value</p>
-                  <p className="text-lg font-black text-espresso">{opp.estimatedValue}</p>
-                </div>
-
-                {/* Looking For */}
-                <div>
-                  <p className="text-[10px] font-bold text-brown uppercase tracking-wider mb-1.5">Looking For</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {opp.lookingFor.map((item, i) => (
-                      <span key={i} className="px-2 py-0.5 bg-taupe/10 rounded text-[10px] text-espresso font-medium border border-taupe/20">
-                        {item}
-                      </span>
-                    ))}
-                  </div>
-                </div>
               </div>
-
-              {/* Actions */}
-              <div className="p-4 border-t border-taupe/20 flex gap-2">
-                <button
-                  onClick={() => alert(`Viewing full opportunity from ${opp.brandName}`)}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-espresso bg-offWhite hover:bg-taupe/20 border border-taupe/30 transition-colors"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  View Opportunity
-                </button>
-                <button
-                  onClick={() => {
-                    setApproachedBrands([...approachedBrands, opp.id]);
-                    alert(`Partnership request sent to ${opp.brandName}!`);
-                  }}
-                  disabled={approachedBrands.includes(opp.id)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-colors ${
-                    approachedBrands.includes(opp.id)
-                      ? "bg-taupe/30 text-brown cursor-not-allowed"
-                      : "bg-espresso text-offWhite hover:bg-darkBrown"
-                  }`}
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  {approachedBrands.includes(opp.id) ? "Approached" : "Approach Brand"}
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         /* Empty State */
@@ -400,6 +529,16 @@ export default function DiscoverSponsors() {
           </button>
         </div>
       )}
+
+      {/* Send Partnership Request Modal */}
+      {selectedOppForModal && (
+        <SendPartnershipRequestModal
+          opportunity={selectedOppForModal}
+          onClose={() => setSelectedOppForModal(null)}
+          onSubmit={handleModalSubmit}
+        />
+      )}
     </div>
   );
 }
+

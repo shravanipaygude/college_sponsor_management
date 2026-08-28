@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import {
   Menu,
   Search,
@@ -11,18 +12,30 @@ import {
   Clock,
   FileText,
 } from "lucide-react";
-import { mockUser, notificationsData } from "../data/mockData";
+import { mockUser } from "../data/mockData";
+import { useAuth } from "../hooks/useAuth";
+import { markAllNotificationsAsRead, markNotificationAsRead } from "../store/slices/notificationSlice";
 
 export default function Topbar({ onOpenMobileSidebar, activeTab }) {
+  const dispatch = useDispatch();
+  const { user, logout } = useAuth();
+  const currentUser = user || mockUser;
+
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notifications, setNotifications] = useState(notificationsData);
+
+  const allNotifications = useSelector((state) => state.notifications.items);
+  // Filter notifications for current user role if specified
+  const notifications = allNotifications.filter(
+    (n) => !n.role || n.role === currentUser.role
+  );
 
   const unreadCount = notifications.filter((n) => n.unread).length;
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, unread: false })));
+  const handleMarkAllAsRead = () => {
+    dispatch(markAllNotificationsAsRead(currentUser.role));
   };
+
 
   const getTabTitle = (tab) => {
     switch (tab) {
@@ -108,7 +121,7 @@ export default function Topbar({ onOpenMobileSidebar, activeTab }) {
                   </div>
                   {unreadCount > 0 && (
                     <button
-                      onClick={markAllAsRead}
+                      onClick={handleMarkAllAsRead}
                       className="text-[11px] text-taupe hover:text-offWhite transition-colors underline"
                     >
                       Mark all read
@@ -120,14 +133,15 @@ export default function Topbar({ onOpenMobileSidebar, activeTab }) {
                   {notifications.map((n) => (
                     <div
                       key={n.id}
-                      className={`p-3.5 flex items-start gap-3 transition-colors ${
+                      onClick={() => dispatch(markNotificationAsRead(n.id))}
+                      className={`p-3.5 flex items-start gap-3 transition-colors cursor-pointer ${
                         n.unread ? "bg-taupe/10" : "hover:bg-offWhite/50"
                       }`}
                     >
                       <div className="mt-0.5 p-1.5 rounded-lg bg-taupe/20 text-brown">
-                        {n.title.includes("Proof") ? (
+                        {n.title?.includes("Proof") ? (
                           <FileText className="w-4 h-4" />
-                        ) : n.title.includes("Negotiation") ? (
+                        ) : n.title?.includes("Negotiation") ? (
                           <Clock className="w-4 h-4" />
                         ) : (
                           <CheckCircle2 className="w-4 h-4" />
@@ -146,6 +160,11 @@ export default function Topbar({ onOpenMobileSidebar, activeTab }) {
                       </div>
                     </div>
                   ))}
+                  {notifications.length === 0 && (
+                    <div className="p-4 text-center text-xs text-brown">
+                      No notifications for {currentUser.role}
+                    </div>
+                  )}
                 </div>
 
                 <div className="p-2.5 bg-offWhite/50 border-t border-taupe/20 text-center">
@@ -167,14 +186,14 @@ export default function Topbar({ onOpenMobileSidebar, activeTab }) {
               className="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-taupe/20 transition-colors"
             >
               <div className="w-9 h-9 rounded-full bg-espresso text-taupe flex items-center justify-center font-bold text-xs shadow-sm ring-2 ring-taupe/30">
-                {mockUser.avatar}
+                {currentUser.avatar || currentUser.name?.substring(0, 2).toUpperCase() || "US"}
               </div>
               <div className="hidden lg:block text-left">
                 <p className="text-xs font-bold text-espresso leading-tight">
-                  {mockUser.name}
+                  {currentUser.name}
                 </p>
                 <p className="text-[10px] text-brown font-medium leading-tight">
-                  {mockUser.role}
+                  {currentUser.role}
                 </p>
               </div>
               <ChevronDown className="w-4 h-4 text-brown" />
@@ -184,17 +203,17 @@ export default function Topbar({ onOpenMobileSidebar, activeTab }) {
             {profileDropdownOpen && (
               <div className="absolute right-0 mt-2 w-56 bg-white border border-taupe/30 rounded-xl shadow-xl z-50 overflow-hidden py-1">
                 <div className="px-4 py-3 border-b border-taupe/15 bg-offWhite/30">
-                  <p className="text-xs font-bold text-espresso">{mockUser.name}</p>
-                  <p className="text-[11px] text-brown">{mockUser.email}</p>
+                  <p className="text-xs font-bold text-espresso">{currentUser.name}</p>
+                  <p className="text-[11px] text-brown">{currentUser.email}</p>
                   <span className="inline-block mt-1.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-taupe/20 text-darkBrown">
-                    {mockUser.college} • {mockUser.role}
+                    {currentUser.college || currentUser.company || "VESIT"} • {currentUser.role}
                   </span>
                 </div>
 
                 <button
                   onClick={() => {
                     setProfileDropdownOpen(false);
-                    alert("Profile clicked (Mock view)");
+                    alert("Profile clicked");
                   }}
                   className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-darkBrown hover:bg-offWhite font-medium transition-colors"
                 >
@@ -205,7 +224,7 @@ export default function Topbar({ onOpenMobileSidebar, activeTab }) {
                 <button
                   onClick={() => {
                     setProfileDropdownOpen(false);
-                    alert("Settings clicked (Mock view)");
+                    alert("Settings clicked");
                   }}
                   className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-darkBrown hover:bg-offWhite font-medium transition-colors"
                 >
@@ -218,7 +237,7 @@ export default function Topbar({ onOpenMobileSidebar, activeTab }) {
                 <button
                   onClick={() => {
                     setProfileDropdownOpen(false);
-                    alert("Logout clicked (Mock action)");
+                    if (logout) logout();
                   }}
                   className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-darkBrown hover:bg-offWhite font-medium transition-colors"
                 >
@@ -233,3 +252,4 @@ export default function Topbar({ onOpenMobileSidebar, activeTab }) {
     </header>
   );
 }
+

@@ -1,9 +1,11 @@
 import React from "react";
+import { useSelector } from "react-redux";
 import { Eye } from "lucide-react";
 import StatusBadge from "../common/StatusBadge";
-import { committeePartnerships } from "../../data/mockData";
 
 export default function CommitteePartnerships() {
+  const partnerships = useSelector((state) => state.partnerships.items);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -14,7 +16,8 @@ export default function CommitteePartnerships() {
 
       {/* Partnership Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {committeePartnerships.map((p) => (
+        {partnerships.map((p) => (
+
           <div
             key={p.id}
             className="bg-white rounded-2xl border border-taupe/30 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden"
