@@ -27,14 +27,16 @@ export default function BrandOpportunities() {
   const opportunities = allOpportunities.filter((o) => {
     if (!user) return false;
     const userHexId = String(user._id || user.id || "");
-    const userOrg = (user.organizationName || user.company || user.name || "").toLowerCase().trim();
+    const createdByHex = o.createdBy ? String(o.createdBy._id || o.createdBy) : "";
 
-    const createdByHex = o.createdBy ? String(o.createdBy._id || o.createdBy) : null;
+    // Primary check: createdBy === current Sponsor user ID
     if (createdByHex && userHexId && createdByHex === userHexId) {
       return true;
     }
+    // Fallback for legacy items without createdBy
+    const userOrg = (user.organizationName || user.company || user.name || "").toLowerCase().trim();
     const oppComp = (o.companyName || o.brandName || "").toLowerCase().trim();
-    if (oppComp && userOrg && oppComp === userOrg) {
+    if (!createdByHex && userOrg && oppComp && userOrg === oppComp) {
       return true;
     }
     return false;
@@ -54,16 +56,21 @@ export default function BrandOpportunities() {
   const [editCanProvide, setEditCanProvide] = useState("");
   const [editExpectations, setEditExpectations] = useState("");
 
-  const handleCreate = (newOppData) => {
-    dispatch(createOpportunityThunk(newOppData));
-    dispatch(
-      addNotification({
-        role: "Corporate Sponsor",
-        title: "Opportunity Published",
-        message: `Sponsorship opportunity "${newOppData.title || newOppData.brandName}" published.`,
-      })
-    );
-    setShowCreateModal(false);
+  const handleCreate = async (newOppData) => {
+    try {
+      await dispatch(createOpportunityThunk(newOppData)).unwrap();
+      dispatch(
+        addNotification({
+          role: "Corporate Sponsor",
+          title: "Opportunity Published",
+          message: `Sponsorship opportunity "${newOppData.title || newOppData.brandName}" published.`,
+        })
+      );
+      setShowCreateModal(false);
+    } catch (err) {
+      console.error("Failed to save opportunity in backend:", err);
+      throw err;
+    }
   };
 
   const openEditModal = (opp) => {

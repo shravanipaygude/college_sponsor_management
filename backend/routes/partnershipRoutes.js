@@ -12,12 +12,24 @@ const Request = require("../models/Request");
 router.post("/", async (req, res) => {
     try {
         const body = { ...req.body };
-        if (body.committee && !mongoose.Types.ObjectId.isValid(body.committee)) delete body.committee;
-        if (body.sponsor && !mongoose.Types.ObjectId.isValid(body.sponsor)) delete body.sponsor;
-        if (body.request && !mongoose.Types.ObjectId.isValid(body.request)) delete body.request;
-        if (body.event && !mongoose.Types.ObjectId.isValid(body.event)) delete body.event;
-        if (body.opportunity && !mongoose.Types.ObjectId.isValid(body.opportunity)) delete body.opportunity;
-        if (body.approvedBy && !mongoose.Types.ObjectId.isValid(body.approvedBy)) delete body.approvedBy;
+        if (body.committee && typeof body.committee === "string" && mongoose.Types.ObjectId.isValid(body.committee)) {
+            body.committee = new mongoose.Types.ObjectId(body.committee);
+        }
+        if (body.sponsor && typeof body.sponsor === "string" && mongoose.Types.ObjectId.isValid(body.sponsor)) {
+            body.sponsor = new mongoose.Types.ObjectId(body.sponsor);
+        }
+        if (body.request && typeof body.request === "string" && mongoose.Types.ObjectId.isValid(body.request)) {
+            body.request = new mongoose.Types.ObjectId(body.request);
+        }
+        if (body.event && typeof body.event === "string" && mongoose.Types.ObjectId.isValid(body.event)) {
+            body.event = new mongoose.Types.ObjectId(body.event);
+        }
+        if (body.opportunity && typeof body.opportunity === "string" && mongoose.Types.ObjectId.isValid(body.opportunity)) {
+            body.opportunity = new mongoose.Types.ObjectId(body.opportunity);
+        }
+        if (body.approvedBy && typeof body.approvedBy === "string" && mongoose.Types.ObjectId.isValid(body.approvedBy)) {
+            body.approvedBy = new mongoose.Types.ObjectId(body.approvedBy);
+        }
 
         const requestId = body.request;
 

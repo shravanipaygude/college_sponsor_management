@@ -53,22 +53,27 @@ export default function MyEvents() {
   const [editLookingFor, setEditLookingFor] = useState("");
   const [editCanOffer, setEditCanOffer] = useState("");
 
-  const handleCreatePost = (newPostData) => {
-    const postPayload = {
-      ...newPostData,
-      createdBy: user?._id || user?.id,
-      committeeName: user?.organizationName || user?.committee || "College Committee",
-      collegeName: user?.collegeName || user?.college || "VESIT",
-    };
-    dispatch(createEventThunk(postPayload));
-    dispatch(
-      addNotification({
-        role: "Committee Head",
-        title: "Event Created",
-        message: `Event "${newPostData.eventName || newPostData.title}" created successfully.`,
-      })
-    );
-    setShowCreateModal(false);
+  const handleCreatePost = async (newPostData) => {
+    try {
+      const postPayload = {
+        ...newPostData,
+        createdBy: user?._id || user?.id,
+        committeeName: user?.organizationName || user?.committee || "College Committee",
+        collegeName: user?.collegeName || user?.college || "VESIT",
+      };
+      await dispatch(createEventThunk(postPayload)).unwrap();
+      dispatch(
+        addNotification({
+          role: "Committee Head",
+          title: "Event Created",
+          message: `Event "${newPostData.eventName || newPostData.title}" created successfully.`,
+        })
+      );
+      setShowCreateModal(false);
+    } catch (err) {
+      console.error("Failed to save event in backend:", err);
+      throw err;
+    }
   };
 
   const openEditModal = (event) => {

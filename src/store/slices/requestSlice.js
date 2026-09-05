@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { api, mapRequestToUI } from "../../services/api.js";
+import { createPartnershipThunk } from "./partnershipSlice.js";
 
 // Async thunks for Requests API integration
 export const fetchRequestsThunk = createAsyncThunk(
@@ -49,11 +50,31 @@ export const createPartnershipRequestThunk = createAsyncThunk(
 
 export const updateRequestStatusThunk = createAsyncThunk(
   "requests/updateRequestStatus",
-  async ({ requestId, status }, { rejectWithValue }) => {
+  async ({ requestId, status }, { dispatch, rejectWithValue }) => {
     try {
       const backendStatus = status.toLowerCase() === "accepted" ? "accepted" : "declined";
       const updated = await api.updateRequestStatus(requestId, backendStatus);
       const mapped = mapRequestToUI(updated);
+      if (backendStatus === "accepted" && mapped) {
+        try {
+          const isCommReceiver = mapped.receiverRole === "committee";
+          const commId = isCommReceiver ? mapped.receiver : mapped.sender;
+          const sponId = isCommReceiver ? mapped.sender : mapped.receiver;
+          const partPayload = {
+            committee: commId,
+            sponsor: sponId,
+            requestId: mapped._id || mapped.id || requestId,
+            eventId: mapped.eventId || mapped.sponsorshipPostId || null,
+            opportunityId: mapped.opportunityId || null,
+            eventName: mapped.eventName || "College Event",
+            brandProvides: mapped.offering || "Sponsorship Support",
+            committeeProvides: mapped.theyOffer || mapped.interestedIn || ["Main Stage Branding"],
+          };
+          dispatch(createPartnershipThunk(partPayload));
+        } catch (partErr) {
+          console.error("Failed to auto-create partnership on accept:", partErr);
+        }
+      }
       return { requestId, mapped, status: status === "accepted" || status === "Accepted" ? "Accepted" : "Declined" };
     } catch (err) {
       return rejectWithValue(err.message);

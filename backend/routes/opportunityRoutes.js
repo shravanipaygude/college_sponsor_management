@@ -8,14 +8,23 @@ const mongoose = require("mongoose");
 router.post("/", async (req, res) => {
     try {
         const body = { ...req.body };
-        if (body.createdBy && !mongoose.Types.ObjectId.isValid(body.createdBy)) {
-            delete body.createdBy;
+
+        if (!body.title || !body.companyName || !body.description) {
+            return res.status(400).json({
+                message: "Missing required fields: title, companyName, and description are required",
+            });
         }
+
+        if (body.createdBy && typeof body.createdBy === "string" && mongoose.Types.ObjectId.isValid(body.createdBy)) {
+            body.createdBy = new mongoose.Types.ObjectId(body.createdBy);
+        }
+
         const opportunity = new Opportunity(body);
         const savedOpportunity = await opportunity.save();
 
         res.status(201).json(savedOpportunity);
     } catch (error) {
+        console.error("Error creating opportunity:", error);
         res.status(500).json({
             message: "Failed to create opportunity",
             error: error.message,

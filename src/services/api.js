@@ -3,13 +3,15 @@ const API_BASE_URL = "http://localhost:5000/api";
 // Utility mapper helpers
 export const mapEventToPost = (eventDoc) => {
     if (!eventDoc) return null;
-    const id = eventDoc._id || eventDoc.id;
+    const id = String(eventDoc._id || eventDoc.id);
+    const createdBy = eventDoc.createdBy ? String(eventDoc.createdBy._id || eventDoc.createdBy) : null;
     return {
         id: id,
         _id: id,
-        committeeId: eventDoc.createdBy || 1,
+        createdBy: createdBy,
+        committeeId: createdBy || 1,
         committeeName: eventDoc.committeeName || "CSI Student Chapter",
-        collegeName: "VESIT",
+        collegeName: eventDoc.collegeName || "VESIT",
         collegeLogo: "VE",
         eventName: eventDoc.title || "College Event",
         title: eventDoc.title,
@@ -60,8 +62,8 @@ export const mapPostToEventPayload = (postData) => {
 
 export const mapOpportunityToUI = (oppDoc) => {
     if (!oppDoc) return null;
-    const id = oppDoc._id || oppDoc.id;
-    const createdBy = oppDoc.createdBy ? (oppDoc.createdBy._id || oppDoc.createdBy) : null;
+    const id = String(oppDoc._id || oppDoc.id);
+    const createdBy = oppDoc.createdBy ? String(oppDoc.createdBy._id || oppDoc.createdBy) : null;
     const companyName = oppDoc.companyName || oppDoc.brandName || "Corporate Sponsor";
     const canProvideList = Array.isArray(oppDoc.supportType) ? oppDoc.supportType : [];
     const expectationsList = Array.isArray(oppDoc.requirements) ? oppDoc.requirements : [];
@@ -80,7 +82,7 @@ export const mapOpportunityToUI = (oppDoc) => {
         contributionType: typeof canProvideList[0] === "string" ? canProvideList[0] : (canProvideList[0]?.type || "Hybrid"),
         estimatedValue: oppDoc.amountOrValue || "₹50,000",
         estimatedValueNumeric: 50000,
-        interestedIn: expectationsList,
+        interestedIn: Array.isArray(oppDoc.interestedIn) ? oppDoc.interestedIn : [],
         canProvide: canProvideList,
         expectations: expectationsList,
         lookingFor: expectationsList,
@@ -95,9 +97,9 @@ export const mapOpportunityToUI = (oppDoc) => {
 };
 
 export const mapOpportunityPayload = (oppData) => {
-    const compName = oppData.companyName || oppData.brandName || "Corporate Sponsor";
+    const compName = oppData.companyName || oppData.brandName || oppData.organizationName || "Corporate Sponsor";
     return {
-        createdBy: oppData.createdBy || null,
+        createdBy: oppData.createdBy ? String(oppData.createdBy) : null,
         title: oppData.title || `${compName} Sponsorship Program`,
         companyName: compName,
         description: oppData.about || oppData.description || "Sponsorship opportunity",
@@ -111,6 +113,7 @@ export const mapOpportunityPayload = (oppData) => {
             ? oppData.lookingFor
             : [],
         category: oppData.industry || oppData.category || "AI / Technology",
+        interestedIn: Array.isArray(oppData.interestedIn) ? oppData.interestedIn : [],
         status: "open",
     };
 };
@@ -264,18 +267,52 @@ export const mapPartnershipToUI = (partDoc) => {
 export const api = {
     // Events
     getEvents: async () => {
-        const res = await fetch(`${API_BASE_URL}/events`);
-        if (!res.ok) throw new Error("Failed to fetch events");
-        return await res.json();
+        try {
+            const res = await fetch(`${API_BASE_URL}/events`);
+            if (!res.ok) throw new Error("Failed to fetch events");
+            const data = await res.json();
+            console.log("GET /api/events count:", data.length);
+            return data;
+        } catch (err) {
+            if (err.message === "Failed to fetch" || err.message.includes("NetworkError")) {
+                console.error("GET /api/events failed: Unable to connect to server");
+                return [];
+            }
+            throw err;
+        }
     },
     createEvent: async (eventPayload) => {
-        const res = await fetch(`${API_BASE_URL}/events`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(eventPayload),
-        });
-        if (!res.ok) throw new Error("Failed to create event");
-        return await res.json();
+        console.log("Submitting event payload:", eventPayload);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/events`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(eventPayload),
+                signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+            console.log("POST /api/events response status:", res.status);
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.message || errorData.error || `Server responded with status ${res.status}`);
+            }
+            const savedDoc = await res.json();
+            console.log("POST /api/events returned document:", savedDoc);
+            return savedDoc;
+        } catch (err) {
+            clearTimeout(timeoutId);
+            if (err.name === "AbortError") {
+                throw new Error("Unable to connect to server (Request timed out)");
+            }
+            if (err.message === "Failed to fetch" || err.message.includes("NetworkError")) {
+                throw new Error("Unable to connect to server. Please ensure backend is running.");
+            }
+            throw err;
+        }
     },
     updateEvent: async (id, eventPayload) => {
         const res = await fetch(`${API_BASE_URL}/events/${id}`, {
@@ -296,18 +333,52 @@ export const api = {
 
     // Opportunities
     getOpportunities: async () => {
-        const res = await fetch(`${API_BASE_URL}/opportunities`);
-        if (!res.ok) throw new Error("Failed to fetch opportunities");
-        return await res.json();
+        try {
+            const res = await fetch(`${API_BASE_URL}/opportunities`);
+            if (!res.ok) throw new Error("Failed to fetch opportunities");
+            const data = await res.json();
+            console.log("GET /api/opportunities count:", data.length);
+            return data;
+        } catch (err) {
+            if (err.message === "Failed to fetch" || err.message.includes("NetworkError")) {
+                console.error("GET /api/opportunities failed: Unable to connect to server");
+                return [];
+            }
+            throw err;
+        }
     },
     createOpportunity: async (opportunityPayload) => {
-        const res = await fetch(`${API_BASE_URL}/opportunities`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(opportunityPayload),
-        });
-        if (!res.ok) throw new Error("Failed to create opportunity");
-        return await res.json();
+        console.log("Submitting opportunity payload:", opportunityPayload);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/opportunities`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(opportunityPayload),
+                signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+            console.log("POST /api/opportunities response status:", res.status);
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.message || errorData.error || `Server responded with status ${res.status}`);
+            }
+            const savedDoc = await res.json();
+            console.log("POST /api/opportunities returned document:", savedDoc);
+            return savedDoc;
+        } catch (err) {
+            clearTimeout(timeoutId);
+            if (err.name === "AbortError") {
+                throw new Error("Unable to connect to server (Request timed out)");
+            }
+            if (err.message === "Failed to fetch" || err.message.includes("NetworkError")) {
+                throw new Error("Unable to connect to server. Please ensure backend is running.");
+            }
+            throw err;
+        }
     },
     updateOpportunity: async (id, opportunityPayload) => {
         const res = await fetch(`${API_BASE_URL}/opportunities/${id}`, {

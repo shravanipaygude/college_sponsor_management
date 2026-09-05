@@ -42,16 +42,21 @@ export default function SponsorshipPosts() {
   const [editLookingFor, setEditLookingFor] = useState("");
   const [editCanOffer, setEditCanOffer] = useState("");
 
-  const handleCreatePost = (newPostData) => {
-    dispatch(createEventThunk(newPostData));
-    dispatch(
-      addNotification({
-        role: "Committee Head",
-        title: "Sponsorship Post Created",
-        message: `Post for "${newPostData.eventName || newPostData.title}" created successfully.`,
-      })
-    );
-    setShowCreateModal(false);
+  const handleCreatePost = async (newPostData) => {
+    try {
+      await dispatch(createEventThunk(newPostData)).unwrap();
+      dispatch(
+        addNotification({
+          role: "Committee Head",
+          title: "Sponsorship Post Created",
+          message: `Post for "${newPostData.eventName || newPostData.title}" created successfully.`,
+        })
+      );
+      setShowCreateModal(false);
+    } catch (err) {
+      console.error("Failed to save sponsorship post in backend:", err);
+      throw err;
+    }
   };
 
   const openEditModal = (post) => {

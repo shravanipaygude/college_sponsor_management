@@ -8,14 +8,23 @@ const mongoose = require("mongoose");
 router.post("/", async (req, res) => {
     try {
         const body = { ...req.body };
-        if (body.createdBy && !mongoose.Types.ObjectId.isValid(body.createdBy)) {
-            delete body.createdBy;
+
+        if (!body.title || !body.committeeName || !body.description) {
+            return res.status(400).json({
+                message: "Missing required fields: title, committeeName, and description are required",
+            });
         }
+
+        if (body.createdBy && typeof body.createdBy === "string" && mongoose.Types.ObjectId.isValid(body.createdBy)) {
+            body.createdBy = new mongoose.Types.ObjectId(body.createdBy);
+        }
+
         const event = new Event(body);
         const savedEvent = await event.save();
 
         res.status(201).json(savedEvent);
     } catch (error) {
+        console.error("Error creating event:", error);
         res.status(500).json({
             message: "Failed to create event",
             error: error.message,

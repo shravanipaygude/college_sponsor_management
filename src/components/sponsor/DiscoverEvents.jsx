@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { Search, Eye, Heart, Users, Calendar, Tag, Bookmark, X, SlidersHorizontal, Check } from "lucide-react";
 import { useSavedItems } from "../../hooks/useSavedItems";
 import { useAuth } from "../../hooks/useAuth";
-import { createPartnershipRequest, createPartnershipRequestThunk } from "../../store/slices/requestSlice";
+import { createPartnershipRequest, createPartnershipRequestThunk, fetchRequestsThunk } from "../../store/slices/requestSlice";
 import { incrementBrandsInterested, fetchEventsThunk } from "../../store/slices/sponsorshipSlice";
 import { addNotification } from "../../store/slices/notificationSlice";
 import Modal from "../common/Modal";
@@ -35,6 +35,7 @@ export default function DiscoverEvents() {
 
   useEffect(() => {
     dispatch(fetchEventsThunk());
+    dispatch(fetchRequestsThunk());
   }, [dispatch]);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -155,7 +156,9 @@ export default function DiscoverEvents() {
         "Digital / Services": "Digital",
         "Hybrid": "Hybrid",
       };
-      if (post.sponsorshipNeeded !== typeMap[sponsorshipFilter]) return false;
+      const targetNeed = (typeMap[sponsorshipFilter] || sponsorshipFilter).toLowerCase();
+      const eventNeed = (post.sponsorshipNeeded || "").toLowerCase();
+      if (!eventNeed.includes(targetNeed)) return false;
     }
 
     if (participantFilter !== 0) {

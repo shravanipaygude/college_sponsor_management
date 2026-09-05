@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const requestSchema = new mongoose.Schema(
     {
         sender: {
-            type: mongoose.Schema.Types.ObjectId,
+            type: mongoose.Schema.Types.Mixed,
             ref: "User",
             required: false,
         },
@@ -15,7 +15,7 @@ const requestSchema = new mongoose.Schema(
         },
 
         receiver: {
-            type: mongoose.Schema.Types.ObjectId,
+            type: mongoose.Schema.Types.Mixed,
             ref: "User",
             required: false,
         },
@@ -27,13 +27,13 @@ const requestSchema = new mongoose.Schema(
         },
 
         event: {
-            type: mongoose.Schema.Types.ObjectId,
+            type: mongoose.Schema.Types.Mixed,
             ref: "Event",
             default: null,
         },
 
         opportunity: {
-            type: mongoose.Schema.Types.ObjectId,
+            type: mongoose.Schema.Types.Mixed,
             ref: "Opportunity",
             default: null,
         },

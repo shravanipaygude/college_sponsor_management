@@ -43,8 +43,13 @@ const opportunitySchema = new mongoose.Schema(
             default: "",
         },
 
+        interestedIn: {
+            type: [String],
+            default: [],
+        },
+
         createdBy: {
-            type: mongoose.Schema.Types.ObjectId,
+            type: mongoose.Schema.Types.Mixed,
             ref: "User",
             required: false,
         },

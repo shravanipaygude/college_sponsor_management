@@ -27,7 +27,7 @@ export const createEventThunk = createAsyncThunk(
       const payload = mapPostToEventPayload(postData);
       const createdEvent = await api.createEvent(payload);
       const mappedPost = mapEventToPost(createdEvent);
-      return { ...mappedPost, ...postData, id: mappedPost.id, _id: mappedPost._id };
+      return { ...postData, ...mappedPost, id: mappedPost.id, _id: mappedPost._id };
     } catch (err) {
       return rejectWithValue(err.message);
     }
@@ -53,7 +53,7 @@ export const createOpportunityThunk = createAsyncThunk(
       const payload = mapOpportunityPayload(oppData);
       const createdOpp = await api.createOpportunity(payload);
       const mappedOpp = mapOpportunityToUI(createdOpp);
-      return { ...mappedOpp, ...oppData, id: mappedOpp.id, _id: mappedOpp._id };
+      return { ...oppData, ...mappedOpp, id: mappedOpp.id, _id: mappedOpp._id };
     } catch (err) {
       return rejectWithValue(err.message);
     }

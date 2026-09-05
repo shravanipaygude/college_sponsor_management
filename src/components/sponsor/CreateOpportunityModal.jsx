@@ -100,22 +100,31 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
 
     try {
       const currentCompany = user?.organizationName || user?.company || user?.name || "Corporate Sponsor";
-      const currentUserId = user?._id || user?.id;
+      const currentUserId = user?._id || user?.id || null;
+
+      const calculatedEstValue =
+        estimatedValue.trim() ||
+        (productEstValue ? (productEstValue.startsWith("₹") ? productEstValue : `₹${productEstValue}`) : "") ||
+        (serviceEstValue ? (serviceEstValue.startsWith("₹") ? serviceEstValue : `₹${serviceEstValue}`) : "") ||
+        (monetaryAmount ? (monetaryAmount.startsWith("₹") ? monetaryAmount : `₹${monetaryAmount}`) : "") ||
+        "₹50,000";
 
       await onSave({
         title: title.trim(),
         about: about.trim() || "Brand sponsorship program",
         companyName: currentCompany,
         brandName: currentCompany,
+        organizationName: currentCompany,
         createdBy: currentUserId,
         brandLogo: "NA",
         interestedIn: selectedEventTypes,
         canProvide,
         expectations: selectedExpectations,
-        estimatedValue: estimatedValue.trim() || "₹50,000",
+        estimatedValue: calculatedEstValue,
         selectedContributionType,
       });
     } catch (err) {
+      console.error("Create Opportunity Error:", err);
       setError(err.message || "Failed to create opportunity. Please try again.");
     } finally {
       setIsSubmitting(false);

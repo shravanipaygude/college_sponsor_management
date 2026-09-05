@@ -10,10 +10,18 @@ const mongoose = require("mongoose");
 router.post("/", async (req, res) => {
     try {
         const body = { ...req.body };
-        if (body.sender && !mongoose.Types.ObjectId.isValid(body.sender)) delete body.sender;
-        if (body.receiver && !mongoose.Types.ObjectId.isValid(body.receiver)) delete body.receiver;
-        if (body.event && !mongoose.Types.ObjectId.isValid(body.event)) delete body.event;
-        if (body.opportunity && !mongoose.Types.ObjectId.isValid(body.opportunity)) delete body.opportunity;
+        if (body.sender && typeof body.sender === "string" && mongoose.Types.ObjectId.isValid(body.sender)) {
+            body.sender = new mongoose.Types.ObjectId(body.sender);
+        }
+        if (body.receiver && typeof body.receiver === "string" && mongoose.Types.ObjectId.isValid(body.receiver)) {
+            body.receiver = new mongoose.Types.ObjectId(body.receiver);
+        }
+        if (body.event && typeof body.event === "string" && mongoose.Types.ObjectId.isValid(body.event)) {
+            body.event = new mongoose.Types.ObjectId(body.event);
+        }
+        if (body.opportunity && typeof body.opportunity === "string" && mongoose.Types.ObjectId.isValid(body.opportunity)) {
+            body.opportunity = new mongoose.Types.ObjectId(body.opportunity);
+        }
 
         const duplicateQuery = { status: "pending" };
         if (body.sender) duplicateQuery.sender = body.sender;

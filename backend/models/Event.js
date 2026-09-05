@@ -49,7 +49,7 @@ const eventSchema = new mongoose.Schema(
         },
 
         createdBy: {
-            type: mongoose.Schema.Types.ObjectId,
+            type: mongoose.Schema.Types.Mixed,
             ref: "User",
             required: false,
         },

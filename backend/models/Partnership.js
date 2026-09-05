@@ -3,31 +3,31 @@ const mongoose = require("mongoose");
 const partnershipSchema = new mongoose.Schema(
     {
         committee: {
-            type: mongoose.Schema.Types.ObjectId,
+            type: mongoose.Schema.Types.Mixed,
             ref: "User",
             required: false,
         },
 
         sponsor: {
-            type: mongoose.Schema.Types.ObjectId,
+            type: mongoose.Schema.Types.Mixed,
             ref: "User",
             required: false,
         },
 
         event: {
-            type: mongoose.Schema.Types.ObjectId,
+            type: mongoose.Schema.Types.Mixed,
             ref: "Event",
             default: null,
         },
 
         opportunity: {
-            type: mongoose.Schema.Types.ObjectId,
+            type: mongoose.Schema.Types.Mixed,
             ref: "Opportunity",
             default: null,
         },
 
         request: {
-            type: mongoose.Schema.Types.ObjectId,
+            type: mongoose.Schema.Types.Mixed,
             ref: "Request",
             required: false,
         },
@@ -71,7 +71,7 @@ const partnershipSchema = new mongoose.Schema(
         },
 
         approvedBy: {
-            type: mongoose.Schema.Types.ObjectId,
+            type: mongoose.Schema.Types.Mixed,
             ref: "User",
             default: null,
         },
