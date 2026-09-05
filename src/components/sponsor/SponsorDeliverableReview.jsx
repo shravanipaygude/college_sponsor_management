@@ -1,11 +1,25 @@
 import React, { useState } from "react";
+import { useSelector } from "react-redux";
 import { Eye, CheckCircle, RotateCcw, Image as ImageIcon } from "lucide-react";
 import StatusBadge from "../common/StatusBadge";
 import Modal from "../common/Modal";
-import { brandDeliverableReviews as initialReviews } from "../../data/mockData";
 
 export default function SponsorDeliverableReview() {
-  const [reviews, setReviews] = useState(initialReviews);
+  const partnerships = useSelector((state) => state.partnerships.items);
+  const reviews = partnerships.flatMap((p) =>
+    (p.deliverables || p.committeeProvides || ["Main Stage Branding"]).map((item, idx) => ({
+      id: `${p._id || p.id}_${idx}`,
+      collegeName: p.collegeName || p.committeeName || "College Committee",
+      eventName: p.eventName || "College Event",
+      deliverable: item,
+      description: `Deliverable promised for ${p.eventName}`,
+      status: p.status === "Approved" ? "Completed" : "Proof Submitted",
+      proofUrl: "proof_sample.jpg",
+      submittedAt: "Recently",
+      updatedAt: "Recently",
+    }))
+  );
+
   const [selectedReview, setSelectedReview] = useState(null);
 
   const handleApproveProof = (id) => {
@@ -25,7 +39,14 @@ export default function SponsorDeliverableReview() {
         <p className="text-xs text-brown mt-1">Review proof of deliverables submitted by college committees</p>
       </div>
 
-      <div className="space-y-4">
+      {reviews.length === 0 ? (
+        <div className="bg-[var(--bg-card)] p-8 rounded-3xl border border-[var(--border-subtle)] text-center space-y-2">
+          <CheckCircle className="w-8 h-8 text-[var(--brand-royal)] mx-auto opacity-50" />
+          <h3 className="text-sm font-bold text-[var(--text-primary)]">No deliverables submitted for review</h3>
+          <p className="text-xs text-[var(--text-secondary)]">Submitted deliverable proofs from colleges will appear here for review.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
         {reviews.map((review) => (
           <div key={review.id} className="bg-white rounded-2xl border border-taupe/30 shadow-sm hover:shadow-md transition-all duration-200 p-5">
             <div className="flex items-start justify-between gap-3">
@@ -79,6 +100,7 @@ export default function SponsorDeliverableReview() {
           </div>
         ))}
       </div>
+      )}
 
       {/* Review Detail Modal */}
       <Modal isOpen={!!selectedReview} onClose={() => setSelectedReview(null)} title="Deliverable Review" icon={Eye}>

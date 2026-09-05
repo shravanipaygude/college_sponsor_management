@@ -2,12 +2,33 @@ const express = require("express");
 const router = express.Router();
 const Request = require("../models/Request");
 
+const mongoose = require("mongoose");
+
 // Create a new request
 // Sponsor -> Committee (Express Interest)
 // Committee -> Sponsor (Approach Sponsor)
 router.post("/", async (req, res) => {
     try {
-        const request = new Request(req.body);
+        const body = { ...req.body };
+        if (body.sender && !mongoose.Types.ObjectId.isValid(body.sender)) delete body.sender;
+        if (body.receiver && !mongoose.Types.ObjectId.isValid(body.receiver)) delete body.receiver;
+        if (body.event && !mongoose.Types.ObjectId.isValid(body.event)) delete body.event;
+        if (body.opportunity && !mongoose.Types.ObjectId.isValid(body.opportunity)) delete body.opportunity;
+
+        const duplicateQuery = { status: "pending" };
+        if (body.sender) duplicateQuery.sender = body.sender;
+        if (body.receiver) duplicateQuery.receiver = body.receiver;
+        if (body.event) duplicateQuery.event = body.event;
+        if (body.opportunity) duplicateQuery.opportunity = body.opportunity;
+
+        if (body.sender && body.receiver && (body.event || body.opportunity)) {
+            const existing = await Request.findOne(duplicateQuery);
+            if (existing) {
+                return res.status(200).json(existing);
+            }
+        }
+
+        const request = new Request(body);
         const savedRequest = await request.save();
 
         res.status(201).json(savedRequest);
@@ -23,6 +44,8 @@ router.post("/", async (req, res) => {
 router.get("/", async (req, res) => {
     try {
         const requests = await Request.find()
+            .populate("sender")
+            .populate("receiver")
             .populate("event")
             .populate("opportunity")
             .sort({ createdAt: -1 });

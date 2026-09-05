@@ -26,12 +26,6 @@ const roleOptions = [
     icon: Building2,
     desc: "Offering sponsorships to colleges",
   },
-  {
-    id: "faculty",
-    label: "Faculty Approver",
-    icon: GraduationCap,
-    desc: "Reviewing & approving deals",
-  },
 ];
 
 const industryOptions = [
@@ -44,6 +38,8 @@ const industryOptions = [
   "Other",
 ];
 
+const councilPresets = ["CSI", "ISTE", "IEEE", "ISA", "Other"];
+
 export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -54,7 +50,8 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
   const [selectedRole, setSelectedRole] = useState(initialRole);
 
   const [college, setCollege] = useState("");
-  const [committeeName, setCommitteeName] = useState("");
+  const [selectedPresetCouncil, setSelectedPresetCouncil] = useState("CSI");
+  const [customCouncilName, setCustomCouncilName] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [industry, setIndustry] = useState("");
   const [department, setDepartment] = useState("");
@@ -65,6 +62,13 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
   const [success, setSuccess] = useState(false);
 
   const { register } = useAuth();
+
+  const getFinalCouncilName = () => {
+    if (selectedPresetCouncil === "Other") {
+      return customCouncilName.trim();
+    }
+    return selectedPresetCouncil;
+  };
 
   const validate = () => {
     const errors = {};
@@ -79,15 +83,12 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
 
     if (selectedRole === "committee") {
       if (!college.trim()) errors.college = "College name is required";
-      if (!committeeName.trim()) errors.committeeName = "Committee name is required";
+      const councilName = getFinalCouncilName();
+      if (!councilName) errors.committeeName = "Council / Committee name is required";
     }
     if (selectedRole === "sponsor") {
       if (!companyName.trim()) errors.companyName = "Company name is required";
       if (!industry) errors.industry = "Industry is required";
-    }
-    if (selectedRole === "faculty") {
-      if (!college.trim()) errors.college = "College name is required";
-      if (!department.trim()) errors.department = "Department is required";
     }
 
     setFieldErrors(errors);
@@ -110,16 +111,16 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
       };
 
       if (selectedRole === "committee") {
-        userData.college = college.trim();
-        userData.committee = committeeName.trim();
+        const finalCouncil = getFinalCouncilName();
+        userData.college = college.trim() || "VESIT";
+        userData.collegeName = college.trim() || "VESIT";
+        userData.committee = finalCouncil;
+        userData.organizationName = finalCouncil;
       }
       if (selectedRole === "sponsor") {
         userData.company = companyName.trim();
+        userData.organizationName = companyName.trim();
         userData.industry = industry;
-      }
-      if (selectedRole === "faculty") {
-        userData.college = college.trim();
-        userData.department = department.trim();
       }
 
       await register(userData);
@@ -127,7 +128,7 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
     } catch (err) {
       setError(err.message || "Registration failed. Please try again.");
     } finally {
-      setLoading(false);
+      setIsLoading ? null : setLoading(false);
     }
   };
 
@@ -139,7 +140,7 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
         </div>
         <h2 className="text-xl font-bold text-[var(--text-primary)]">Account Created!</h2>
         <p className="text-sm text-[var(--text-secondary)]">
-          Your SponsorFlow account has been created successfully.
+          Your Sponnect account has been created successfully.
           <br />
           Sign in with your credentials to get started.
         </p>
@@ -165,7 +166,7 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
       {/* Header */}
       <div className="text-center mb-2">
         <h2 className="text-lg font-bold text-[var(--text-primary)]">
-          Create Your SponsorFlow Account
+          Create Your Sponnect Account
         </h2>
       </div>
 
@@ -362,20 +363,46 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
               <p className="text-[11px] text-red-500 font-medium">{fieldErrors.college}</p>
             )}
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <label className="text-xs font-bold text-[var(--text-primary)]">
-              Committee / Council Name
+              Select Council / Committee Suggestion
             </label>
-            <input
-              type="text"
-              value={committeeName}
-              onChange={(e) => {
-                setCommitteeName(e.target.value);
-                setFieldErrors((prev) => ({ ...prev, committeeName: "" }));
-              }}
-              placeholder="e.g. CSI Student Chapter"
-              className={inputClass("committeeName")}
-            />
+            <div className="flex flex-wrap gap-2">
+              {councilPresets.map((preset) => (
+                <button
+                  type="button"
+                  key={preset}
+                  onClick={() => {
+                    setSelectedPresetCouncil(preset);
+                    setFieldErrors((prev) => ({ ...prev, committeeName: "" }));
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    selectedPresetCouncil === preset
+                      ? "bg-[var(--brand-primary)] text-white shadow-sm"
+                      : "bg-[var(--bg-card)] text-[var(--text-primary)] border border-[var(--border-subtle)] hover:border-[var(--brand-primary)]"
+                  }`}
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
+            {selectedPresetCouncil === "Other" && (
+              <div className="pt-2 space-y-1">
+                <label className="text-xs font-semibold text-[var(--brand-royal)]">
+                  Enter Custom Council / Committee Name
+                </label>
+                <input
+                  type="text"
+                  value={customCouncilName}
+                  onChange={(e) => {
+                    setCustomCouncilName(e.target.value);
+                    setFieldErrors((prev) => ({ ...prev, committeeName: "" }));
+                  }}
+                  placeholder="e.g. ACM, IETE, E-Cell, NSS, Robotics Club"
+                  className={inputClass("committeeName")}
+                />
+              </div>
+            )}
             {fieldErrors.committeeName && (
               <p className="text-[11px] text-red-500 font-medium">{fieldErrors.committeeName}</p>
             )}
@@ -425,48 +452,6 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
             </select>
             {fieldErrors.industry && (
               <p className="text-[11px] text-red-500 font-medium">{fieldErrors.industry}</p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {selectedRole === "faculty" && (
-        <div className="space-y-4 p-4 bg-[var(--bg-surface-alt)] rounded-xl border border-[var(--border-subtle)]">
-          <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">
-            Faculty Details
-          </p>
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[var(--text-primary)]">
-              College / Institute Name
-            </label>
-            <input
-              type="text"
-              value={college}
-              onChange={(e) => {
-                setCollege(e.target.value);
-                setFieldErrors((prev) => ({ ...prev, college: "" }));
-              }}
-              placeholder="e.g. VESIT"
-              className={inputClass("college")}
-            />
-            {fieldErrors.college && (
-              <p className="text-[11px] text-red-500 font-medium">{fieldErrors.college}</p>
-            )}
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-[var(--text-primary)]">Department</label>
-            <input
-              type="text"
-              value={department}
-              onChange={(e) => {
-                setDepartment(e.target.value);
-                setFieldErrors((prev) => ({ ...prev, department: "" }));
-              }}
-              placeholder="e.g. Computer Engineering"
-              className={inputClass("department")}
-            />
-            {fieldErrors.department && (
-              <p className="text-[11px] text-red-500 font-medium">{fieldErrors.department}</p>
             )}
           </div>
         </div>

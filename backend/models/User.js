@@ -32,6 +32,12 @@ const userSchema = new mongoose.Schema(
             default: "",
         },
 
+        collegeName: {
+            type: String,
+            default: "",
+            trim: true,
+        },
+
         logo: {
             type: String,
             default: "",

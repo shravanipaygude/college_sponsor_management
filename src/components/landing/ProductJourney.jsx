@@ -116,7 +116,7 @@ export default function ProductJourney() {
               <span className="w-3 h-3 rounded-full bg-[#B99AE8]" />
               <span className="w-3 h-3 rounded-full bg-[#6D42C1]" />
               <span className="text-xs font-mono text-[#B99AE8] ml-2 hidden sm:inline">
-                https://sponsorflow.app/{currentStage.id}
+                https://sponnect.app/{currentStage.id}
               </span>
             </div>
             <span className="px-2.5 py-0.5 rounded text-[10px] font-mono font-bold bg-[#6D42C1]/30 text-[#FF9CC5] border border-[#FF6FAE]/30">
@@ -250,7 +250,7 @@ export default function ProductJourney() {
             {/* Bottom Status Bar */}
             <div className="pt-4 border-t border-[#B99AE8]/20 flex items-center justify-between text-[11px] text-[#C9BADB] font-medium">
               <span className="flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5 text-[#B99AE8]" /> Structured End-to-End Workflow</span>
-              <span className="font-mono text-[#B99AE8]">SponsorFlow App</span>
+              <span className="font-mono text-[#B99AE8]">Sponnect App</span>
             </div>
 
           </div>

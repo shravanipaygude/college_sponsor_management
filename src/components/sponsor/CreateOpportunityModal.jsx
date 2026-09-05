@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { X, Megaphone, Plus, Check } from "lucide-react";
+import { useAuth } from "../../hooks/useAuth";
 
 const eventTypes = [
   "Hackathons", "Coding Competitions", "Technical Festivals", "Workshops",
@@ -15,6 +16,7 @@ const defaultExpectations = [
 ];
 
 export default function CreateOpportunityModal({ onClose, onSave }) {
+  const { user } = useAuth();
   const [title, setTitle] = useState("");
   const [about, setAbout] = useState("");
   const [selectedEventTypes, setSelectedEventTypes] = useState([]);
@@ -23,6 +25,8 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
   const [estimatedValue, setEstimatedValue] = useState("");
   const [selectedExpectations, setSelectedExpectations] = useState([]);
   const [customExpectation, setCustomExpectation] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [monetaryAmount, setMonetaryAmount] = useState("");
   const [productName, setProductName] = useState("");
@@ -70,7 +74,16 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
     setHybridContributions(hybridContributions.map((c, i) => i === idx ? { ...c, [field]: val } : c));
   };
 
-  const handleSave = () => {
+  const handleSave = async (e) => {
+    if (e) e.preventDefault();
+    if (isSubmitting) return;
+    if (!title.trim()) {
+      setError("Please enter an Opportunity Title.");
+      return;
+    }
+    setError("");
+    setIsSubmitting(true);
+
     let canProvide = [];
     if (selectedContributionType === "Monetary") {
       canProvide = [{ item: monetaryAmount ? `₹${monetaryAmount} Monetary Support` : "Monetary Support", type: "Monetary" }];
@@ -85,14 +98,28 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
       }));
     }
 
-    onSave({
-      title: title || "Untitled Sponsorship Opportunity",
-      about,
-      interestedIn: selectedEventTypes,
-      canProvide,
-      expectations: selectedExpectations,
-      estimatedValue: estimatedValue || "TBD",
-    });
+    try {
+      const currentCompany = user?.organizationName || user?.company || user?.name || "Corporate Sponsor";
+      const currentUserId = user?._id || user?.id;
+
+      await onSave({
+        title: title.trim(),
+        about: about.trim() || "Brand sponsorship program",
+        companyName: currentCompany,
+        brandName: currentCompany,
+        createdBy: currentUserId,
+        brandLogo: "NA",
+        interestedIn: selectedEventTypes,
+        canProvide,
+        expectations: selectedExpectations,
+        estimatedValue: estimatedValue.trim() || "₹50,000",
+        selectedContributionType,
+      });
+    } catch (err) {
+      setError(err.message || "Failed to create opportunity. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const inputClass = "w-full bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]";
@@ -394,21 +421,29 @@ export default function CreateOpportunityModal({ onClose, onSave }) {
               </button>
             </div>
           </div>
+
+          {error && (
+            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-500 font-semibold">
+              {error}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
         <div className="p-4 bg-[var(--bg-surface-alt)] border-t border-[var(--border-subtle)] flex items-center justify-end gap-3 shrink-0">
           <button
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] transition-colors cursor-pointer"
+            disabled={isSubmitting}
+            className="px-4 py-2.5 rounded-xl text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] transition-colors cursor-pointer disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[var(--brand-primary)] text-white hover:opacity-90 transition-colors shadow-md cursor-pointer"
+            disabled={isSubmitting}
+            className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[var(--brand-primary)] text-white hover:opacity-90 transition-colors shadow-md cursor-pointer disabled:opacity-50 flex items-center gap-2"
           >
-            Publish Opportunity
+            {isSubmitting ? "Publishing..." : "Publish Opportunity"}
           </button>
         </div>
       </div>

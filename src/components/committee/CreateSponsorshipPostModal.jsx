@@ -1,6 +1,17 @@
 import React, { useState } from "react";
-import { X, FileText, Plus, Check } from "lucide-react";
-import { committeeEvents } from "../../data/mockData";
+import { X, FileText, Plus, Check, ShieldCheck } from "lucide-react";
+import { useAuth } from "../../hooks/useAuth";
+
+const categories = [
+  "Technical Festival",
+  "Hackathon",
+  "Cultural Festival",
+  "Workshop",
+  "Coding Competition",
+  "Exhibition",
+  "Seminar",
+  "Other",
+];
 
 const contributionTypes = [
   { id: "monetary", label: "Monetary" },
@@ -34,14 +45,21 @@ const defaultBenefits = [
 ];
 
 export default function CreateSponsorshipPostModal({ onClose, onSave }) {
-  const [selectedEvent, setSelectedEvent] = useState(committeeEvents[0]?.id || "");
+  const { user } = useAuth();
+
   const [postTitle, setPostTitle] = useState("");
+  const [eventDate, setEventDate] = useState("");
+  const [category, setCategory] = useState("Technical Festival");
   const [description, setDescription] = useState("");
-  const [selectedTypes, setSelectedTypes] = useState([]);
+  const [coverImage, setCoverImage] = useState("");
+
+  const [selectedTypes, setSelectedTypes] = useState(["monetary"]);
   const [selectedRequirements, setSelectedRequirements] = useState([]);
   const [customRequirement, setCustomRequirement] = useState("");
   const [selectedBenefits, setSelectedBenefits] = useState([]);
   const [customBenefit, setCustomBenefit] = useState("");
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [monetaryMin, setMonetaryMin] = useState("");
   const [monetaryMax, setMonetaryMax] = useState("");
@@ -82,27 +100,59 @@ export default function CreateSponsorshipPostModal({ onClose, onSave }) {
     }
   };
 
-  const handleSave = () => {
-    const event = committeeEvents.find((e) => e.id === Number(selectedEvent));
-    onSave({
-      eventId: Number(selectedEvent),
-      eventName: event?.name || "Unknown Event",
-      title: postTitle || `Looking for Sponsors — ${event?.name}`,
-      participants: event?.participants || "N/A",
-      eventType: event?.type || "Event",
-      eventDate: event?.date || "TBD",
-      lookingFor: selectedRequirements,
-      canOffer: selectedBenefits,
-      contributionTypes: selectedTypes,
-      monetaryRange: selectedTypes.includes("monetary") ? { min: monetaryMin, max: monetaryMax } : null,
-      productsDetails: selectedTypes.includes("inkind") ? { products: productsNeeded, quantity: expectedQuantity } : null,
-      serviceDetails: selectedTypes.includes("digital") ? { service: serviceNeeded, licenses: licenseQuantity } : null,
-    });
+  const handleSave = async (e) => {
+    if (e) e.preventDefault();
+    if (isSubmitting) return;
+
+    if (!postTitle.trim()) {
+      setError("Please enter an Event Title.");
+      return;
+    }
+    if (!description.trim()) {
+      setError("Please enter an Event Description.");
+      return;
+    }
+
+    setError("");
+    setIsSubmitting(true);
+
+    try {
+      const currentCommitteeName = user?.organizationName || user?.committee || user?.name || "College Committee";
+      const currentUserId = user?._id || user?.id;
+
+      await onSave({
+        title: postTitle.trim(),
+        eventName: postTitle.trim(),
+        description: description.trim(),
+        committeeName: currentCommitteeName,
+        createdBy: currentUserId,
+        collegeName: user?.college || "VESIT",
+        collegeLogo: "VE",
+        eventType: category,
+        category: category,
+        eventDate: eventDate || "TBD",
+        participants: "500+",
+        lookingFor: selectedRequirements,
+        canOffer: selectedBenefits,
+        contributionTypes: selectedTypes,
+        sponsorshipNeeded: selectedTypes.map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(", ") || "Monetary",
+        coverImage: coverImage.trim(),
+        monetaryRange: selectedTypes.includes("monetary") ? { min: monetaryMin, max: monetaryMax } : null,
+        productsDetails: selectedTypes.includes("inkind") ? { products: productsNeeded, quantity: expectedQuantity } : null,
+        serviceDetails: selectedTypes.includes("digital") ? { service: serviceNeeded, licenses: licenseQuantity } : null,
+      });
+    } catch (err) {
+      setError(err.message || "Failed to create event. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const showMonetary = selectedTypes.includes("monetary") || selectedTypes.includes("hybrid");
   const showInKind = selectedTypes.includes("inkind") || selectedTypes.includes("hybrid");
   const showDigital = selectedTypes.includes("digital") || selectedTypes.includes("hybrid");
+
+  const publishingAs = user?.organizationName || user?.committee || user?.name || "Committee";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm font-sans-ui animate-fadeIn">
@@ -111,7 +161,7 @@ export default function CreateSponsorshipPostModal({ onClose, onSave }) {
         <div className="bg-[var(--brand-primary)] px-6 py-4 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <FileText className="w-5 h-5 text-white" />
-            <h3 className="font-bold text-base tracking-tight text-white">Create Sponsorship Post</h3>
+            <h3 className="font-bold text-base tracking-tight text-white">Create New Event</h3>
           </div>
           <button onClick={onClose} className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors cursor-pointer">
             <X className="w-5 h-5" />
@@ -119,40 +169,89 @@ export default function CreateSponsorshipPostModal({ onClose, onSave }) {
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Event Selection */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">Event</label>
-            <select
-              value={selectedEvent}
-              onChange={(e) => setSelectedEvent(e.target.value)}
-              className="w-full bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-xl px-3 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
-            >
-              {committeeEvents.map((e) => (
-                <option key={e.id} value={e.id}>{e.name}</option>
-              ))}
-            </select>
+        <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 space-y-5">
+          {/* Non-editable Council Identity Badge */}
+          <div className="bg-[var(--bg-surface-alt)] px-4 py-2.5 rounded-2xl border border-[var(--border-subtle)] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-[var(--brand-primary)]" />
+              <span className="text-xs font-semibold text-[var(--text-secondary)]">Creating Event As</span>
+            </div>
+            <span className="text-xs font-bold text-[var(--brand-primary)] bg-[var(--brand-primary)]/10 px-3 py-1 rounded-xl border border-[var(--border-subtle)]">
+              {publishingAs}
+            </span>
           </div>
 
-          {/* Post Title */}
+          {/* Event Title */}
           <div className="space-y-1.5">
-            <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">Post Title</label>
+            <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">
+              Event Title <span className="text-red-500">*</span>
+            </label>
             <input
               type="text"
+              required
               value={postTitle}
               onChange={(e) => setPostTitle(e.target.value)}
-              placeholder="e.g. Looking for Sponsors — CSI TechNext 2026"
+              placeholder="e.g. CSI Odyssey 2026"
+              className="w-full bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-xl px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] font-medium"
+            />
+          </div>
+
+          {/* Category & Event Date */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">
+                Category / Event Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-xl px-3 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
+              >
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">
+                Event Date <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                value={eventDate}
+                onChange={(e) => setEventDate(e.target.value)}
+                className="w-full bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-xl px-3 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
+              />
+            </div>
+          </div>
+
+          {/* Cover Image URL */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">
+              Cover Image URL (Optional)
+            </label>
+            <input
+              type="text"
+              value={coverImage}
+              onChange={(e) => setCoverImage(e.target.value)}
+              placeholder="https://example.com/cover.jpg"
               className="w-full bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-xl px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
             />
           </div>
 
           {/* Event Description */}
           <div className="space-y-1.5">
-            <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">Event Description</label>
+            <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">
+              Event Description <span className="text-red-500">*</span>
+            </label>
             <textarea
+              required
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="A technical festival featuring hackathons, coding competitions..."
+              placeholder="Describe your event, expected crowd, highlights..."
               rows={3}
               className="w-full bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-xl px-3 py-2.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] resize-none"
             />
@@ -160,10 +259,13 @@ export default function CreateSponsorshipPostModal({ onClose, onSave }) {
 
           {/* Contribution Types */}
           <div className="space-y-2">
-            <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">What Are You Looking For?</label>
+            <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">
+              Sponsorship Needed
+            </label>
             <div className="flex flex-wrap gap-2">
               {contributionTypes.map((type) => (
                 <button
+                  type="button"
                   key={type.id}
                   onClick={() => toggleType(type.id)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
@@ -275,6 +377,7 @@ export default function CreateSponsorshipPostModal({ onClose, onSave }) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {defaultRequirements.map((req) => (
                 <button
+                  type="button"
                   key={req}
                   onClick={() => toggleRequirement(req)}
                   className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-left transition-all cursor-pointer ${
@@ -304,6 +407,7 @@ export default function CreateSponsorshipPostModal({ onClose, onSave }) {
                 className="flex-1 bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
               />
               <button
+                type="button"
                 onClick={addCustomRequirement}
                 className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[var(--brand-primary)]/15 text-[var(--brand-primary)] hover:bg-[var(--brand-primary)] hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
               >
@@ -313,12 +417,13 @@ export default function CreateSponsorshipPostModal({ onClose, onSave }) {
             </div>
           </div>
 
-          {/* What We Can Offer */}
+          {/* Benefits Offered */}
           <div className="space-y-2">
-            <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">What We Can Offer Sponsors</label>
+            <label className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider">Benefits Offered to Sponsors</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {defaultBenefits.map((ben) => (
                 <button
+                  type="button"
                   key={ben}
                   onClick={() => toggleBenefit(ben)}
                   className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-left transition-all cursor-pointer ${
@@ -348,31 +453,40 @@ export default function CreateSponsorshipPostModal({ onClose, onSave }) {
                 className="flex-1 bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-xl px-3 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)]"
               />
               <button
+                type="button"
                 onClick={addCustomBenefit}
                 className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[var(--brand-primary)]/15 text-[var(--brand-primary)] hover:bg-[var(--brand-primary)] hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                Add
               </button>
             </div>
           </div>
-        </div>
 
-        {/* Footer */}
-        <div className="p-4 bg-[var(--bg-surface-alt)] border-t border-[var(--border-subtle)] flex items-center justify-end gap-3 shrink-0">
-          <button
-            onClick={onClose}
-            className="px-4 py-2.5 rounded-xl text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] transition-colors cursor-pointer"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[var(--brand-primary)] text-white hover:opacity-90 transition-colors shadow-md cursor-pointer"
-          >
-            Publish Sponsorship Post
-          </button>
-        </div>
+          {error && (
+            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-xs text-red-500 font-semibold">
+              {error}
+            </div>
+          )}
+
+          {/* Footer Actions */}
+          <div className="pt-4 border-t border-[var(--border-subtle)] flex items-center justify-end gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="px-4 py-2.5 rounded-xl text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-subtle)] transition-colors cursor-pointer disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[var(--brand-primary)] text-white hover:opacity-90 transition-colors shadow-md cursor-pointer disabled:opacity-50 flex items-center gap-2"
+            >
+              {isSubmitting ? "Creating Event..." : "Create Event"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

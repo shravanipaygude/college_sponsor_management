@@ -15,7 +15,7 @@ export default function MatchPreviewSection() {
             See the Right Opportunities Faster.
           </h2>
           <p className="text-base sm:text-lg text-brown font-medium">
-            SponsorFlow highlights relevant matches based on budget, non-monetary requirements, event category, and promotional deliverables.
+            Sponnect highlights relevant matches based on budget, non-monetary requirements, event category, and promotional deliverables.
           </p>
         </div>
 

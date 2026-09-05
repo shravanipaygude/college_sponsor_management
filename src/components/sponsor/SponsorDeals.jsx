@@ -1,11 +1,22 @@
 import React, { useState } from "react";
+import { useSelector } from "react-redux";
 import { Eye, FileCheck } from "lucide-react";
 import StatusBadge from "../common/StatusBadge";
 import Modal from "../common/Modal";
-import { brandDeals as initialDeals } from "../../data/mockData";
 
 export default function SponsorDeals() {
-  const [deals, setDeals] = useState(initialDeals);
+  const partnerships = useSelector((state) => state.partnerships.items);
+  const deals = partnerships.map((p) => ({
+    id: p._id || p.id,
+    collegeName: p.collegeName || p.committeeName || "College Committee",
+    collegeLogo: (p.collegeName || p.committeeName || "VE").substring(0, 2),
+    eventName: p.eventName || "College Event",
+    status: p.status || "Active",
+    sponsorProvides: Array.isArray(p.sponsorProvides) ? p.sponsorProvides : [{ item: p.supportProvided || "₹50,000 Support", type: "Monetary" }],
+    collegeProvides: Array.isArray(p.committeeProvides) ? p.committeeProvides : p.deliverables || ["Main Stage Branding"],
+    estimatedTotalValue: p.estimatedTotalValue || p.estimatedValue || "₹50,000",
+  }));
+
   const [selectedDeal, setSelectedDeal] = useState(null);
 
   return (
@@ -15,7 +26,14 @@ export default function SponsorDeals() {
         <p className="text-xs text-brown mt-1">Your finalized sponsorship agreements with colleges</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {deals.length === 0 ? (
+        <div className="bg-[var(--bg-card)] p-8 rounded-3xl border border-[var(--border-subtle)] text-center space-y-2">
+          <FileCheck className="w-8 h-8 text-[var(--brand-royal)] mx-auto opacity-50" />
+          <h3 className="text-sm font-bold text-[var(--text-primary)]">No sponsorship deals yet</h3>
+          <p className="text-xs text-[var(--text-secondary)]">Sponsorship deals will appear here once active partnerships are formed.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {deals.map((deal) => (
           <div key={deal.id} className="bg-white rounded-2xl border border-taupe/30 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
             <div className="bg-espresso p-4 text-offWhite flex items-center justify-between">
@@ -74,6 +92,7 @@ export default function SponsorDeals() {
           </div>
         ))}
       </div>
+      )}
 
       {/* Deal Detail Modal */}
       <Modal isOpen={!!selectedDeal} onClose={() => setSelectedDeal(null)} title="Sponsorship Deal" icon={FileCheck}>

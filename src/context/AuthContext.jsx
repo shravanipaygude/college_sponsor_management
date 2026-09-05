@@ -40,8 +40,16 @@ export function AuthProvider({ children }) {
     if (storedSession) {
       try {
         const sessionData = JSON.parse(storedSession);
-        setUser(sessionData);
-        setIsAuthenticated(true);
+        if (sessionData && sessionData.role === "faculty") {
+          // Clear unsupported faculty role session
+          localStorage.removeItem("sf_session");
+          sessionStorage.removeItem("sf_session");
+          setUser(null);
+          setIsAuthenticated(false);
+        } else {
+          setUser(sessionData);
+          setIsAuthenticated(true);
+        }
       } catch {
         // Corrupted session — clear it
         localStorage.removeItem("sf_session");
@@ -102,7 +110,6 @@ export function AuthProvider({ children }) {
     const roleLabelMap = {
       committee: "Committee Head",
       sponsor: "Corporate Sponsor",
-      faculty: "Faculty Approver",
     };
 
     const newUser = addUser({

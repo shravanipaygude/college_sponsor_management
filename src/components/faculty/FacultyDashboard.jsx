@@ -1,14 +1,30 @@
 import React from "react";
+import { useSelector } from "react-redux";
 import { Clock, AlertTriangle, Eye } from "lucide-react";
 import StatCard from "../common/StatCard";
 import StatusBadge from "../common/StatusBadge";
-import { facultyStats, pendingApprovals } from "../../data/mockData";
 
 export default function FacultyDashboard({ onNavigate }) {
+  const partnerships = useSelector((state) => state.partnerships.items);
+
+  const pendingCount = partnerships.filter((p) => p.facultyApprovalStatus === "pending" || p.status === "Awaiting Approval" || !p.facultyApprovalStatus).length;
+  const approvedCount = partnerships.filter((p) => p.facultyApprovalStatus === "approved" || p.status === "Approved").length;
+  const rejectedCount = partnerships.filter((p) => p.facultyApprovalStatus === "rejected" || p.status === "Rejected").length;
+  const totalCount = partnerships.length;
+
+  const dynamicStats = [
+    { id: 1, title: "Pending Reviews", value: String(pendingCount), subtext: "Awaiting faculty approval", iconName: "Clock" },
+    { id: 2, title: "Approved Deals", value: String(approvedCount), subtext: "Faculty approved", iconName: "CheckCircle" },
+    { id: 3, title: "Rejected Deals", value: String(rejectedCount), subtext: "Revisions requested", iconName: "XCircle" },
+    { id: 4, title: "Total Reviews", value: String(totalCount), subtext: "Total submitted partnerships", iconName: "CheckSquare" },
+  ];
+
+  const pendingDeals = partnerships.filter((p) => p.facultyApprovalStatus === "pending" || p.status === "Awaiting Approval" || !p.facultyApprovalStatus);
+
   return (
     <div className="space-y-8 font-sans-ui">
       {/* Stats */}
-      <StatCard stats={facultyStats} />
+      <StatCard stats={dynamicStats} />
 
       {/* Deals Requiring Attention */}
       <div className="bg-[var(--bg-card)] rounded-3xl p-6 border border-[var(--border-subtle)] shadow-sm">
@@ -26,20 +42,20 @@ export default function FacultyDashboard({ onNavigate }) {
         </div>
 
         <div className="space-y-3">
-          {pendingApprovals.map((deal) => (
+          {pendingDeals.map((deal) => (
             <div key={deal.id} className="flex items-center justify-between p-4 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface-alt)] hover:border-[var(--brand-primary)] transition-colors">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-[var(--brand-primary)] text-white flex items-center justify-center font-bold text-sm border border-[var(--border-strong)]">
-                  {deal.brandLogo}
+                  {deal.brandLogo || "NA"}
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-[var(--text-primary)]">{deal.brandName} × {deal.eventName}</h4>
                   <div className="flex items-center gap-2 text-[10px] text-[var(--text-secondary)] mt-0.5">
-                    <span>Value: {deal.estimatedTotalValue}</span>
+                    <span>Value: {deal.estimatedTotalValue || deal.estimatedValue || "₹50,000"}</span>
                     <span>•</span>
                     <span className="flex items-center gap-0.5">
                       <Clock className="w-3 h-3 text-[var(--brand-royal)]" />
-                      Submitted {deal.submittedAt}
+                      Submitted {deal.submittedAt || deal.createdAt || "Recently"}
                     </span>
                   </div>
                 </div>
@@ -56,6 +72,11 @@ export default function FacultyDashboard({ onNavigate }) {
               </div>
             </div>
           ))}
+          {pendingDeals.length === 0 && (
+            <div className="p-6 text-center text-xs text-[var(--text-secondary)]">
+              No pending approvals awaiting faculty review.
+            </div>
+          )}
         </div>
       </div>
 
@@ -63,7 +84,7 @@ export default function FacultyDashboard({ onNavigate }) {
       <div className="bg-[var(--brand-primary)] rounded-3xl p-6 text-white border border-[var(--border-strong)] shadow-xl">
         <h3 className="text-sm font-bold mb-3 text-white">Approval Summary</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {facultyStats.map((stat) => (
+          {dynamicStats.map((stat) => (
             <div key={stat.id} className="bg-black/20 rounded-2xl p-3 border border-white/20">
               <p className="text-[10px] text-white/80 font-mono uppercase font-bold">{stat.title}</p>
               <p className="text-xl font-black text-white">{stat.value}</p>

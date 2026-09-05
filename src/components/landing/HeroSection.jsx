@@ -42,7 +42,7 @@ export default function HeroSection({ onNavigateToAuth }) {
 
             {/* Supporting Text */}
             <p className="text-base sm:text-lg text-brown max-w-xl mx-auto lg:mx-0 leading-relaxed font-medium">
-              SponsorFlow connects college committees and brands to discover
+              Sponnect connects college committees and brands to discover
               opportunities, build partnerships, get approvals, and manage
               sponsorships — all in one place.
             </p>

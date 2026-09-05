@@ -103,7 +103,7 @@ export default function HeroStory({ onNavigateToAuth }) {
 
         {/* Calligraphic Story Sentence (Strictly 2 Lines) */}
         <p className="font-script text-2.5xl sm:text-3.5xl lg:text-4xl text-[var(--brand-primary)] max-w-4xl mx-auto font-medium leading-relaxed tracking-wide px-2">
-          "SponsorFlow brings college committees and corporate sponsors <br className="hidden sm:inline" />
+          "Sponnect brings college committees and corporate sponsors <br className="hidden sm:inline" />
           into one organized, transparent sponsorship network."
         </p>
 

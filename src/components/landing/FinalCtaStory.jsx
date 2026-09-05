@@ -76,7 +76,7 @@ export default function FinalCtaStory({ onNavigateToAuth }) {
         {/* Brand Badge */}
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--bg-surface-alt)] border border-[var(--border-strong)] text-[var(--brand-primary)] text-xs font-mono font-bold tracking-wider uppercase shadow-sm">
           <Award className="w-4 h-4 text-[var(--brand-primary)]" />
-          <span>SponsorFlow Network</span>
+          <span>Sponnect Network</span>
           <Sparkles className="w-3.5 h-3.5 text-[var(--accent-pink)]" />
         </div>
 
@@ -129,7 +129,7 @@ export default function FinalCtaStory({ onNavigateToAuth }) {
       {/* Brand Sign-off Footer Line */}
       <div className="relative z-10 text-center pt-6 border-t border-[var(--border-subtle)] font-sans-ui">
         <p className="text-xs font-mono font-bold text-[var(--text-muted)] uppercase tracking-widest">
-          SponsorFlow • <span className="font-editorial italic font-normal text-[var(--text-primary)]">"Where opportunities meet impact."</span>
+          Sponnect • <span className="font-editorial italic font-normal text-[var(--text-primary)]">"Where opportunities meet impact."</span>
         </p>
       </div>
     </section>

@@ -37,8 +37,8 @@ export default function Sidebar({ activeTab, setActiveTab, mobileOpen, setMobile
             </div>
             <div className="min-w-0 flex-1">
               <h1 className="font-sans-ui font-bold text-base text-[var(--text-primary)] tracking-tight leading-tight flex items-center gap-1 truncate">
-                <span>Sponsor</span>
-                <span className="text-[var(--brand-royal)]">Flow</span>
+                <span>Spon</span>
+                <span className="text-[var(--brand-royal)]">nect</span>
                 <Sparkles className="w-3.5 h-3.5 text-[var(--accent-pink)] fill-[var(--accent-pink)] shrink-0" />
               </h1>
               <p className="text-[11px] text-[var(--text-secondary)] font-medium truncate">

@@ -18,6 +18,12 @@ const eventSchema = new mongoose.Schema(
             required: true,
         },
 
+        collegeName: {
+            type: String,
+            default: "VESIT",
+            trim: true,
+        },
+
         eventDate: {
             type: Date,
         },

@@ -97,7 +97,7 @@ export default function OpportunityStory({ onNavigateToAuth }) {
             <span className="font-editorial italic font-bold text-[#FF9CC5]">Start discovering.</span>
           </h2>
           <p className="text-sm sm:text-base font-sans-ui text-[#C9BADB] max-w-lg mx-auto font-medium">
-            Brands publish their active sponsorship programs directly on SponsorFlow.
+            Brands publish their active sponsorship programs directly on Sponnect.
           </p>
         </div>
 

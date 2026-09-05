@@ -1,13 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { Search, Eye, Send, Tag, Bookmark, X, SlidersHorizontal, Check } from "lucide-react";
 import StatusBadge from "../common/StatusBadge";
 import { useSavedItems } from "../../hooks/useSavedItems";
 import { useAuth } from "../../hooks/useAuth";
-import { incrementOpportunityResponses } from "../../store/slices/sponsorshipSlice";
-import { createPartnershipRequest } from "../../store/slices/requestSlice";
+import { incrementOpportunityResponses, fetchOpportunitiesThunk } from "../../store/slices/sponsorshipSlice";
+import { createPartnershipRequest, createPartnershipRequestThunk } from "../../store/slices/requestSlice";
 import { addNotification } from "../../store/slices/notificationSlice";
 import SendPartnershipRequestModal from "./SendPartnershipRequestModal";
+import Modal from "../common/Modal";
 
 // ─── Filter Options ─────────────────────────────────────────
 
@@ -41,6 +42,10 @@ export default function DiscoverSponsors() {
   const brandOpportunities = useSelector((state) => state.sponsorship.opportunities);
   const requests = useSelector((state) => state.requests.items);
 
+  useEffect(() => {
+    dispatch(fetchOpportunitiesThunk());
+  }, [dispatch]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [contributionFilter, setContributionFilter] = useState("All");
   const [industryFilter, setIndustryFilter] = useState("All");
@@ -48,6 +53,7 @@ export default function DiscoverSponsors() {
   const [valueFilter, setValueFilter] = useState(0);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [selectedOppForModal, setSelectedOppForModal] = useState(null);
+  const [selectedOppForViewDetails, setSelectedOppForViewDetails] = useState(null);
   const [feedbackMessage, setFeedbackMessage] = useState("");
 
   const { user } = useAuth();
@@ -57,60 +63,63 @@ export default function DiscoverSponsors() {
   );
 
   const isBrandApproached = (opp) => {
-    const currentUserId = user?.id || "demo_committee_1";
+    if (!user) return false;
+    const currentUserId = String(user._id || user.id || "");
+    const targetOppId = String(opp._id || opp.id || "");
+
+    if (!currentUserId || !targetOppId) return false;
 
     return requests.some((r) => {
-      const isSenderMatch =
-        (r.senderRole === "committee" || r.senderRole === "Committee Head") &&
-        (r.senderId === currentUserId || (!user?.id && r.senderId === "demo_committee_1"));
+      const reqSender = String(r.sender?._id || r.sender || r.senderId || "");
+      const reqOpp = String(r.opportunity?._id || r.opportunity || r.opportunityId || "");
 
-      if (!isSenderMatch) return false;
+      if (!reqSender || !reqOpp) return false;
 
-      const isTargetMatch =
-        (r.opportunityId && r.opportunityId === opp.id) ||
-        (r.receiverId && opp.sponsorId && r.receiverId === opp.sponsorId) ||
-        (r.brandName && opp.brandName && r.brandName.toLowerCase() === opp.brandName.toLowerCase()) ||
-        (r.receiverName && opp.brandName && r.receiverName.toLowerCase() === opp.brandName.toLowerCase());
+      const isSenderMatch = reqSender === currentUserId;
+      const isOppMatch = reqOpp === targetOppId;
+      const isPendingOrAccepted = (r.status || "").toLowerCase() === "pending" || (r.status || "").toLowerCase() === "accepted";
 
-      if (!isTargetMatch) return false;
-
-      return r.status !== "Declined";
+      return isSenderMatch && isOppMatch && isPendingOrAccepted;
     });
   };
 
-  const handleModalSubmit = (formData) => {
-    if (!selectedOppForModal) return;
-
+  const handleSendModalSubmit = (formData) => {
     const opp = selectedOppForModal;
-    const brandName = opp.brandName || "Corporate Sponsor";
+    if (!opp) return;
+
+    const brandName = opp.brandName || "Brand";
     const brandLogo = opp.brandLogo || "NA";
     const eventObj = formData.event;
 
-    dispatch(
-      createPartnershipRequest({
-        opportunityId: opp.id,
-        opportunityTitle: opp.tagline || `${brandName} Sponsorship Program`,
-        eventId: eventObj.id,
-        eventName: eventObj.name,
-        collegeName: user?.college || "VESIT",
-        collegeLogo: "VE",
-        senderId: user?.id || "demo_committee_1",
-        senderName: user?.committee || user?.name || "CSI Student Chapter",
-        senderRole: "committee",
-        receiverId: opp.sponsorId || "demo_sponsor_1",
-        receiverName: brandName,
-        receiverRole: "sponsor",
-        brandName: brandName,
-        brandLogo: brandLogo,
-        requesting: formData.requesting,
-        theyOffer: formData.offering,
-        offering: formData.requesting.join(" + "),
-        interestedIn: formData.offering,
-        estimatedValue: opp.estimatedValue || "₹50,000",
-        message: formData.message || `CSI Student Chapter requested partnership with ${brandName} for ${eventObj.name}.`,
-        status: "Pending",
-      })
-    );
+    const requestPayload = {
+      opportunityId: opp._id || opp.id,
+      opportunityTitle: opp.tagline || `${brandName} Sponsorship Program`,
+      sponsorshipPostId: eventObj._id || eventObj.id,
+      eventId: eventObj._id || eventObj.id,
+      eventName: eventObj.eventName || eventObj.title || eventObj.name || "College Event",
+      collegeName: user?.collegeName || user?.college || "VESIT",
+      collegeLogo: "VE",
+      sender: user?._id || user?.id,
+      senderId: user?._id || user?.id,
+      senderName: user?.organizationName || user?.committee || user?.name || "College Committee",
+      senderRole: "committee",
+      receiver: opp.createdBy ? (opp.createdBy._id || opp.createdBy) : opp.sponsorId,
+      receiverId: opp.createdBy ? (opp.createdBy._id || opp.createdBy) : opp.sponsorId,
+      receiverName: brandName,
+      receiverRole: "sponsor",
+      brandName: brandName,
+      brandLogo: brandLogo,
+      requesting: formData.requesting,
+      theyOffer: formData.offering,
+      offering: formData.requesting.join(" + "),
+      interestedIn: formData.offering,
+      estimatedValue: opp.estimatedValue || "₹50,000",
+      message: formData.message || `Partnership request to ${brandName} for ${eventObj.eventName || eventObj.title || "event"}.`,
+      status: "Pending",
+    };
+
+    dispatch(createPartnershipRequestThunk(requestPayload));
+    dispatch(createPartnershipRequest(requestPayload));
 
     dispatch(incrementOpportunityResponses(opp.id));
 
@@ -152,17 +161,24 @@ export default function DiscoverSponsors() {
 
   const filtered = brandOpportunities.filter((opp) => {
     if (contributionFilter !== "All") {
-      const typeMap = {
-        "Monetary": "Monetary",
-        "In-Kind / Products": "In-Kind",
-        "Digital / Services": "Digital",
-        "Hybrid": "Hybrid",
-      };
-      if (opp.contributionType !== typeMap[contributionFilter]) return false;
+      const target = contributionFilter.toLowerCase();
+      const oppType = (opp.contributionType || "").toLowerCase();
+      const canProvideText = (opp.canProvide || [])
+        .map((c) => (typeof c === "string" ? c : c.item || c.type || ""))
+        .join(" ")
+        .toLowerCase();
+      const combinedType = `${oppType} ${canProvideText}`;
+
+      if (target.includes("monetary") && !combinedType.includes("monetary")) return false;
+      if (target.includes("product") && !combinedType.includes("product") && !combinedType.includes("in-kind")) return false;
+      if (target.includes("digital") && !combinedType.includes("digital") && !combinedType.includes("service")) return false;
+      if (target.includes("hybrid") && !combinedType.includes("hybrid")) return false;
     }
 
     if (industryFilter !== "All") {
-      if (opp.industry !== industryFilter) return false;
+      const oppInd = (opp.industry || opp.category || "").toLowerCase();
+      const targetInd = industryFilter.toLowerCase();
+      if (!oppInd.includes(targetInd) && !targetInd.includes(oppInd)) return false;
     }
 
     if (eventTypeFilter !== "All") {
@@ -175,7 +191,7 @@ export default function DiscoverSponsors() {
         "Entrepreneurship Events": ["Entrepreneurship", "Entrepreneurship Events"],
       };
       const terms = matchTerms[eventTypeFilter] || [eventTypeFilter];
-      const matched = (opp.interestedIn || []).some((item) =>
+      const matched = (opp.interestedIn || []).length === 0 || (opp.interestedIn || []).some((item) =>
         terms.some((t) => (item || "").toLowerCase().includes(t.toLowerCase()))
       );
       if (!matched) return false;
@@ -183,7 +199,8 @@ export default function DiscoverSponsors() {
 
     if (valueFilter !== 0) {
       const range = valueFilters[valueFilter];
-      const val = opp.estimatedValueNumeric || 0;
+      const rawValStr = String(opp.estimatedValue || opp.amountOrValue || "50000").replace(/[^0-9]/g, "");
+      const val = parseInt(rawValStr, 10) || opp.estimatedValueNumeric || 50000;
       if (val < range.min || val > range.max) return false;
     }
 
@@ -455,7 +472,7 @@ export default function DiscoverSponsors() {
                 {/* Actions */}
                 <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] flex gap-2">
                   <button
-                    onClick={() => alert(`Viewing full opportunity from ${opp.brandName}`)}
+                    onClick={() => setSelectedOppForViewDetails(opp)}
                     className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--bg-surface-alt)] border border-[var(--border-subtle)] transition-colors cursor-pointer"
                   >
                     <Eye className="w-3.5 h-3.5" />
@@ -509,9 +526,79 @@ export default function DiscoverSponsors() {
         <SendPartnershipRequestModal
           opportunity={selectedOppForModal}
           onClose={() => setSelectedOppForModal(null)}
-          onSubmit={handleModalSubmit}
+          onSubmit={handleSendModalSubmit}
         />
       )}
+
+      {/* View Opportunity Modal */}
+      <Modal
+        isOpen={!!selectedOppForViewDetails}
+        onClose={() => setSelectedOppForViewDetails(null)}
+        title={selectedOppForViewDetails?.brandName || "Opportunity Details"}
+        icon={Eye}
+        maxWidth="max-w-lg"
+      >
+        {selectedOppForViewDetails && (
+          <div className="p-6 space-y-4 font-sans-ui text-xs text-[var(--text-primary)]">
+            <div className="bg-[var(--bg-surface-alt)] p-4 rounded-2xl border border-[var(--border-subtle)] space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="font-mono font-bold text-[var(--brand-royal)] uppercase">Brand Name</span>
+                <span className="font-semibold">{selectedOppForViewDetails.brandName}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-mono font-bold text-[var(--brand-royal)] uppercase">Industry</span>
+                <span className="font-semibold">{selectedOppForViewDetails.industry || "AI / Technology"}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-mono font-bold text-[var(--brand-royal)] uppercase">Contribution Type</span>
+                <span className="font-semibold">{selectedOppForViewDetails.contributionType || "Hybrid"}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-mono font-bold text-[var(--brand-royal)] uppercase">Estimated Value</span>
+                <span className="font-bold text-[var(--brand-primary)]">{selectedOppForViewDetails.estimatedValue || "₹50,000"}</span>
+              </div>
+            </div>
+
+            <div>
+              <p className="font-mono font-bold text-[var(--brand-royal)] uppercase mb-1">About Sponsorship Program</p>
+              <p className="text-xs text-[var(--text-primary)] leading-relaxed">
+                {selectedOppForViewDetails.about || selectedOppForViewDetails.description || "Corporate sponsorship opportunity for college events."}
+              </p>
+            </div>
+
+            <div>
+              <p className="font-mono font-bold text-[var(--brand-royal)] uppercase mb-1.5">What They Provide</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(selectedOppForViewDetails.canProvide || []).map((item, i) => (
+                  <span key={i} className="px-2.5 py-1 bg-[var(--brand-primary)]/15 text-[var(--brand-primary)] rounded-lg text-xs font-medium border border-[var(--border-subtle)]">
+                    {typeof item === 'string' ? item : item.item}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="font-mono font-bold text-[var(--brand-royal)] uppercase mb-1.5">Their Expectations</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(selectedOppForViewDetails.expectations || selectedOppForViewDetails.lookingFor || []).map((item, i) => (
+                  <span key={i} className="px-2.5 py-1 bg-[var(--bg-surface-alt)] rounded-lg text-xs font-medium border border-[var(--border-subtle)]">
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => setSelectedOppForViewDetails(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-[var(--brand-primary)] text-white cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

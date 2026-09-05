@@ -1,84 +1,163 @@
-import { createSlice } from "@reduxjs/toolkit";
-import { committeePartnerships } from "../../data/mockData.js";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { api, mapPartnershipToUI } from "../../services/api.js";
 
+// Async thunks for Partnership API integration
+export const fetchPartnershipsThunk = createAsyncThunk(
+  "partnerships/fetchPartnerships",
+  async (_, { rejectWithValue }) => {
+    try {
+      const partnerships = await api.getPartnerships();
+      return partnerships.map(mapPartnershipToUI).filter(Boolean);
+    } catch (err) {
+      return rejectWithValue(err.message);
+    }
+  }
+);
 
-// Experiment 3 — Redux Toolkit Partnership Slice
-// Manages created partnerships and state transitions (Negotiation, Deal Agreed, Approved, etc.)
+export const createPartnershipThunk = createAsyncThunk(
+  "partnerships/createPartnership",
+  async (partnershipData, { rejectWithValue }) => {
+    try {
+      const payload = {
+        committee: partnershipData.committee || partnershipData.committeeId || null,
+        sponsor: partnershipData.sponsor || partnershipData.sponsorId || null,
+        request: partnershipData.requestId || null,
+        event: partnershipData.eventId || partnershipData.sponsorshipPostId || null,
+        opportunity: partnershipData.opportunityId || null,
+        agreementDetails: partnershipData.agreementDetails || `Partnership for ${partnershipData.eventName}`,
+        supportProvided: Array.isArray(partnershipData.brandProvides)
+          ? partnershipData.brandProvides.join(" + ")
+          : partnershipData.brandProvides || "Sponsorship Support",
+        deliverables: Array.isArray(partnershipData.committeeProvides)
+          ? partnershipData.committeeProvides
+          : ["Main Stage Branding"],
+        facultyApprovalStatus: "approved",
+      };
 
-const initialPartnerships = committeePartnerships.map((p) => ({
-  id: p.id,
-  requestId: p.requestId || p.id,
-  committeeId: p.committeeId || 1,
-  committeeName: p.committeeName || "CSI Student Chapter",
-  sponsorId: p.sponsorId || 1,
-  sponsorName: p.brandName,
-  brandName: p.brandName,
-  brandLogo: p.brandLogo || "NA",
-  collegeName: p.collegeName || "VESIT",
-  collegeLogo: p.collegeLogo || "VE",
-  eventName: p.eventName,
-  brandOffers: p.brandOffers || ["₹20,000", "100 AI Credit Vouchers"],
-  brandProvides: p.brandOffers || ["₹20,000", "100 AI Credit Vouchers"],
-  committeeOffers: p.committeeOffers || ["Main Stage Branding", "Instagram Post"],
-  committeeProvides: p.committeeOffers || ["Main Stage Branding", "Instagram Post"],
-  estimatedValue: p.estimatedValue || "₹50,000",
-  status: p.status === "Discussing" ? "Negotiation" : p.status,
-  createdAt: p.lastUpdated || "2 hours ago",
-  lastUpdated: p.lastUpdated || "2 hours ago",
-}));
+      const created = await api.createPartnership(payload);
+      const mapped = mapPartnershipToUI(created);
+      return { ...mapped, ...partnershipData, id: mapped.id, _id: mapped._id };
+    } catch (err) {
+      return rejectWithValue(err.message);
+    }
+  }
+);
+
+export const updateFacultyApprovalThunk = createAsyncThunk(
+  "partnerships/updateFacultyApproval",
+  async ({ partnershipId, facultyApprovalStatus, facultyRemarks, approvedBy }, { rejectWithValue }) => {
+    try {
+      const backendStatus =
+        facultyApprovalStatus.toLowerCase() === "approved"
+          ? "approved"
+          : facultyApprovalStatus.toLowerCase() === "rejected"
+          ? "rejected"
+          : "pending";
+
+      const updated = await api.updateFacultyApproval(partnershipId, {
+        facultyApprovalStatus: backendStatus,
+        facultyRemarks,
+        approvedBy,
+      });
+
+      const mapped = mapPartnershipToUI(updated);
+      return {
+        partnershipId,
+        mapped,
+        status: backendStatus === "approved" ? "Approved" : backendStatus === "rejected" ? "Rejected" : "Awaiting Approval",
+        facultyApprovalStatus: backendStatus,
+        facultyRemarks: facultyRemarks || "",
+        approvedBy: approvedBy || "Faculty Approver",
+      };
+    } catch (err) {
+      return rejectWithValue(err.message);
+    }
+  }
+);
 
 const partnershipSlice = createSlice({
   name: "partnerships",
   initialState: {
-    items: initialPartnerships,
+    items: [],
+    loading: false,
+    error: null,
   },
   reducers: {
     createPartnership: (state, action) => {
-      // Prevent duplicate partnership for the same requestId or same event + brand
+      const matchId = String(action.payload._id || action.payload.id);
+      const existingIdx = state.items.findIndex((p) => String(p._id || p.id) === matchId);
+      if (existingIdx >= 0) {
+        state.items[existingIdx] = action.payload;
+        return;
+      }
       if (action.payload.requestId) {
         const existing = state.items.find(
           (p) => String(p.requestId) === String(action.payload.requestId)
         );
         if (existing) return;
       }
-      const existingMatch = state.items.find(
-        (p) =>
-          p.eventName === action.payload.eventName &&
-          p.brandName === action.payload.brandName
-      );
-      if (existingMatch) return;
-
-      const newPartnership = {
-        id: state.items.length > 0 ? Math.max(...state.items.map((p) => p.id)) + 1 : 1,
-        requestId: action.payload.requestId || null,
-        committeeId: action.payload.committeeId || 1,
-        committeeName: action.payload.committeeName || "CSI Student Chapter",
-        sponsorId: action.payload.sponsorId || 1,
-        sponsorName: action.payload.brandName || "Corporate Sponsor",
-        brandName: action.payload.brandName || "Corporate Sponsor",
-        brandLogo: action.payload.brandLogo || "NA",
-        collegeName: action.payload.collegeName || "VESIT",
-        collegeLogo: action.payload.collegeLogo || "VE",
-        eventName: action.payload.eventName,
-        brandOffers: action.payload.brandProvides || action.payload.brandOffers || ["Sponsorship Funding"],
-        brandProvides: action.payload.brandProvides || action.payload.brandOffers || ["Sponsorship Funding"],
-        committeeOffers: action.payload.committeeProvides || action.payload.committeeOffers || ["Stage & Digital Branding"],
-        committeeProvides: action.payload.committeeProvides || action.payload.committeeOffers || ["Stage & Digital Branding"],
-        estimatedValue: action.payload.estimatedValue || "₹50,000",
-        status: action.payload.status || "Negotiation",
-        createdAt: "Just now",
-        lastUpdated: "Just now",
-      };
-      state.items.unshift(newPartnership);
+      state.items.unshift(action.payload);
     },
     updatePartnershipStatus: (state, action) => {
-      const { id, status } = action.payload;
-      const partnership = state.items.find((p) => p.id === id);
+      const { id, status, facultyRemarks, approvedBy } = action.payload;
+      const partnership = state.items.find((p) => String(p._id || p.id) === String(id));
       if (partnership) {
         partnership.status = status;
+        if (facultyRemarks !== undefined) {
+          partnership.facultyRemarks = facultyRemarks;
+          partnership.remarks = facultyRemarks;
+        }
+        if (approvedBy) {
+          partnership.approvedBy = approvedBy;
+        }
         partnership.lastUpdated = "Just now";
       }
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchPartnershipsThunk.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchPartnershipsThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        // Deduplicate fetched items by _id
+        const uniqueItems = [];
+        const seenIds = new Set();
+        (action.payload || []).forEach((item) => {
+          const idStr = String(item._id || item.id);
+          if (!seenIds.has(idStr)) {
+            seenIds.add(idStr);
+            uniqueItems.push(item);
+          }
+        });
+        state.items = uniqueItems;
+      })
+      .addCase(fetchPartnershipsThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(createPartnershipThunk.fulfilled, (state, action) => {
+        const matchId = String(action.payload._id || action.payload.id);
+        const existingIdx = state.items.findIndex((p) => String(p._id || p.id) === matchId);
+        if (existingIdx >= 0) {
+          state.items[existingIdx] = action.payload;
+        } else {
+          state.items.unshift(action.payload);
+        }
+      })
+      .addCase(updateFacultyApprovalThunk.fulfilled, (state, action) => {
+        const { partnershipId, status, facultyApprovalStatus, facultyRemarks, approvedBy } = action.payload;
+        const partnership = state.items.find((p) => String(p._id || p.id) === String(partnershipId));
+        if (partnership) {
+          partnership.status = status;
+          partnership.facultyApprovalStatus = facultyApprovalStatus;
+          partnership.facultyRemarks = facultyRemarks;
+          partnership.remarks = facultyRemarks;
+          partnership.approvedBy = approvedBy;
+          partnership.lastUpdated = "Just now";
+        }
+      });
   },
 });
 

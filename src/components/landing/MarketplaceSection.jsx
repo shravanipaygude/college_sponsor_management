@@ -37,7 +37,7 @@ export default function MarketplaceSection({ onNavigateToAuth }) {
             Built for Both Sides of the Partnership.
           </h2>
           <p className="text-base sm:text-lg text-brown font-medium">
-            Whether you are a student committee seeking resources or a brand looking for targeted student engagement, SponsorFlow empowers your goals.
+            Whether you are a student committee seeking resources or a brand looking for targeted student engagement, Sponnect empowers your goals.
           </p>
         </div>
 

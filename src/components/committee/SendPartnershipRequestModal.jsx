@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { X, Send, Check, Building2, Tag } from "lucide-react";
-import { committeeEvents } from "../../data/mockData.js";
+import { useSelector } from "react-redux";
+import { Check, X, Send } from "lucide-react";
+import { useAuth } from "../../hooks/useAuth";
 
 const supportOptions = [
   "₹20,000 Monetary Support",
@@ -22,7 +23,25 @@ const benefitOptions = [
 ];
 
 export default function SendPartnershipRequestModal({ opportunity, onClose, onSubmit }) {
-  const [selectedEventId, setSelectedEventId] = useState(committeeEvents[0]?.id || 1);
+  const { user } = useAuth();
+  const allEvents = useSelector((state) => state.sponsorship.posts) || [];
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Filter events belonging to current committee
+  const userOrg = (user?.organizationName || user?.committee || "").toLowerCase().trim();
+  const userHexId = String(user?._id || user?.id || "");
+
+  const myEvents = allEvents.filter((e) => {
+    if (!user) return false;
+    const createdByHex = e.createdBy ? String(e.createdBy._id || e.createdBy) : null;
+    if (createdByHex && userHexId && createdByHex === userHexId) return true;
+    const commName = (e.committeeName || e.committee || "").toLowerCase().trim();
+    if (commName && userOrg && commName === userOrg) return true;
+    return false;
+  });
+
+  const [selectedEventId, setSelectedEventId] = useState(myEvents[0]?.id || myEvents[0]?._id || "");
+  const [customEventTitle, setCustomEventTitle] = useState("");
 
   const initialRequesting = (opportunity?.canProvide || []).map((item) =>
     typeof item === "string" ? item : item.item || String(item)
@@ -53,7 +72,13 @@ export default function SendPartnershipRequestModal({ opportunity, onClose, onSu
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const eventObj = committeeEvents.find((e) => e.id === Number(selectedEventId)) || committeeEvents[0];
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    const eventObj = myEvents.find((evt) => String(evt.id || evt._id) === String(selectedEventId)) || {
+      eventName: customEventTitle || "College Event",
+      title: customEventTitle || "College Event",
+    };
 
     onSubmit({
       event: eventObj,
@@ -105,17 +130,28 @@ export default function SendPartnershipRequestModal({ opportunity, onClose, onSu
             <label className="block text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider mb-2">
               Select Event
             </label>
-            <select
-              value={selectedEventId}
-              onChange={(e) => setSelectedEventId(e.target.value)}
-              className="w-full bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-xl px-3 py-2.5 text-xs text-[var(--text-primary)] font-medium focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] transition-all"
-            >
-              {committeeEvents.map((evt) => (
-                <option key={evt.id} value={evt.id}>
-                  {evt.name} ({evt.type} • {evt.participants} Attendees)
-                </option>
-              ))}
-            </select>
+            {myEvents.length > 0 ? (
+              <select
+                value={selectedEventId}
+                onChange={(e) => setSelectedEventId(e.target.value)}
+                className="w-full bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-xl px-3 py-2.5 text-xs text-[var(--text-primary)] font-medium focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] transition-all"
+              >
+                {myEvents.map((evt) => (
+                  <option key={evt.id || evt._id} value={evt.id || evt._id}>
+                    {evt.eventName || evt.title} ({evt.eventType || evt.category || "Event"})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="text"
+                required
+                value={customEventTitle}
+                onChange={(e) => setCustomEventTitle(e.target.value)}
+                placeholder="Enter Event Title (e.g. CSI Odyssey 2026)"
+                className="w-full bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-xl px-3 py-2.5 text-xs text-[var(--text-primary)] font-medium focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] transition-all"
+              />
+            )}
           </div>
 
           {/* What We Are Requesting */}
@@ -199,10 +235,11 @@ export default function SendPartnershipRequestModal({ opportunity, onClose, onSu
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[var(--brand-primary)] text-white hover:opacity-90 transition-colors flex items-center gap-2 shadow-md cursor-pointer"
+              disabled={isSubmitting}
+              className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[var(--brand-primary)] text-white hover:opacity-90 transition-colors flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50"
             >
               <Send className="w-3.5 h-3.5 text-white" />
-              Send Request
+              {isSubmitting ? "Sending..." : "Send Request"}
             </button>
           </div>
         </form>

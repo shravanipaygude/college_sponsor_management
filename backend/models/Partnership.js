@@ -32,6 +32,12 @@ const partnershipSchema = new mongoose.Schema(
             required: false,
         },
 
+        collegeName: {
+            type: String,
+            default: "VESIT",
+            trim: true,
+        },
+
         agreementDetails: {
             type: String,
             default: "",

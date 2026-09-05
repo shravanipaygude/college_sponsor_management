@@ -1,4 +1,5 @@
 import React from "react";
+import { useAuth } from "../context/AuthContext";
 import {
   LayoutDashboard,
   Calendar,
@@ -24,6 +25,7 @@ const navigationItems = [
 ];
 
 export default function Sidebar({ activeTab, setActiveTab, mobileOpen, setMobileOpen }) {
+  const { logout } = useAuth();
   return (
     <>
       {/* Mobile Drawer Overlay */}
@@ -48,7 +50,7 @@ export default function Sidebar({ activeTab, setActiveTab, mobileOpen, setMobile
             </div>
             <div>
               <h1 className="font-bold text-lg text-offWhite tracking-tight leading-tight">
-                SponsorFlow
+                Sponnect
               </h1>
               <p className="text-[11px] text-taupe font-medium">
                 College Sponsorship Portal
@@ -116,8 +118,8 @@ export default function Sidebar({ activeTab, setActiveTab, mobileOpen, setMobile
           </button>
 
           <button
-            onClick={() => alert("Logout clicked (Mock action for Experiment 1)")}
-            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-offWhite/80 hover:bg-darkBrown hover:text-offWhite transition-colors"
+            onClick={() => logout && logout()}
+            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-offWhite/80 hover:bg-darkBrown hover:text-offWhite transition-colors cursor-pointer"
           >
             <LogOut className="w-4 h-4 text-taupe" />
             <span>Logout</span>

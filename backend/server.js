@@ -6,6 +6,8 @@ require("dotenv").config();
 // Import Routes
 const eventRoutes = require("./routes/eventRoutes");
 const opportunityRoutes = require("./routes/opportunityRoutes");
+const requestRoutes = require("./routes/requestRoutes");
+const partnershipRoutes = require("./routes/partnershipRoutes");
 
 const app = express();
 
@@ -16,6 +18,8 @@ app.use(express.json());
 // Routes
 app.use("/api/events", eventRoutes);
 app.use("/api/opportunities", opportunityRoutes);
+app.use("/api/requests", requestRoutes);
+app.use("/api/partnerships", partnershipRoutes);
 
 // Connect to MongoDB
 mongoose

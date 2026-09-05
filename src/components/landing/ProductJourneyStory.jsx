@@ -110,9 +110,9 @@ export default function ProductJourneyStory() {
               <span className="w-3 h-3 rounded-full bg-[var(--accent-pink)]" />
               <span className="w-3 h-3 rounded-full bg-[var(--brand-royal)]" />
               <span className="w-3 h-3 rounded-full bg-[var(--brand-primary)]" />
-              <span className="text-xs font-mono text-[var(--text-secondary)] ml-2 hidden sm:inline">
-                https://sponsorflow.app/{currentStage.id}
-              </span>
+              <div className="flex-1 bg-[var(--bg-surface-alt)] rounded-lg px-3 py-1 text-center font-mono text-[11px] text-[var(--text-secondary)] border border-[var(--border-subtle)] truncate">
+                https://sponnect.app/{currentStage.id}
+              </div>
             </div>
             <span className="px-2.5 py-0.5 rounded text-[10px] font-mono font-bold bg-[var(--accent-pink-bg)] text-[var(--accent-pink)] border border-[var(--accent-pink)]/30">
               {currentStage.badge}
@@ -223,7 +223,7 @@ export default function ProductJourneyStory() {
             {/* Bottom Status Bar */}
             <div className="pt-4 border-t border-[var(--border-subtle)] flex items-center justify-between text-[11px] text-[var(--text-secondary)] font-medium">
               <span className="flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5 text-[var(--brand-royal)]" /> Structured End-to-End Workflow</span>
-              <span className="font-mono text-[var(--brand-royal)]">SponsorFlow App</span>
+              <span className="font-mono text-[var(--brand-royal)]">Sponnect App</span>
             </div>
 
           </div>

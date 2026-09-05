@@ -71,32 +71,7 @@ export const eventData = {
   goalAmount: 400000,
 };
 
-export const committeeEvents = [
-  {
-    id: 1,
-    name: "CSI TechNext 2026",
-    date: "18 October 2026",
-    venue: "VESIT Auditorium",
-    participants: "500+",
-    type: "Technical Festival",
-    status: "Active",
-    sponsorshipStatus: "Open for Sponsors",
-    totalSponsors: 12,
-    description: "A technical festival featuring hackathons, coding competitions and workshops with 500+ expected student participants.",
-  },
-  {
-    id: 2,
-    name: "CodeStorm 2026",
-    date: "5 December 2026",
-    venue: "VESIT Seminar Hall",
-    participants: "200+",
-    type: "Hackathon",
-    status: "Planning",
-    sponsorshipStatus: "Not Yet Open",
-    totalSponsors: 0,
-    description: "A 24-hour hackathon focused on AI/ML solutions for social good.",
-  },
-];
+export const committeeEvents = [];
 
 export const committeeStats = [
   { id: "sponsors", title: "Total Sponsors", value: "12", subtext: "+3 this month", iconName: "Users" },

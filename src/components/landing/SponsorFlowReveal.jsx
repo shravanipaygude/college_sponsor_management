@@ -99,7 +99,7 @@ export default function SponsorFlowReveal() {
             <Award className="w-9 h-9 text-white" />
           </div>
           <h2 className="text-6xl sm:text-8xl lg:text-9xl font-display font-black text-[var(--text-primary)] tracking-tighter flex items-center justify-center gap-2">
-            <span>Sponsor<span className="text-[var(--brand-royal)]">Flow</span></span>
+            <span>Spon<span className="text-[var(--brand-royal)]">nect</span></span>
             <Sparkles className="w-8 h-8 sm:w-12 sm:h-12 text-[var(--accent-pink)] fill-[var(--accent-pink)] animate-pulse" />
           </h2>
           <p className="text-base sm:text-xl font-sans-ui text-[var(--text-secondary)] font-semibold max-w-xl mx-auto">

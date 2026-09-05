@@ -14,17 +14,14 @@ import {
   Moon,
 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
+import Modal from "./Modal";
 
-/**
- * Reusable Topbar component.
- * Accepts currentUser and role-aware tab title resolver.
- * Includes global Light/Dark theme toggle for authenticated users.
- */
 export default function Topbar({ onOpenMobileSidebar, activeTab, currentUser, notifications: notifData, getTabTitle, onLogout }) {
   const { theme, toggleTheme } = useTheme();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState(notifData || []);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   const unreadCount = notifications.filter((n) => n.unread).length;
 
@@ -34,7 +31,7 @@ export default function Topbar({ onOpenMobileSidebar, activeTab, currentUser, no
 
   const defaultGetTabTitle = (tab) => ({
     title: tab.charAt(0).toUpperCase() + tab.slice(1).replace(/_/g, " "),
-    subtitle: "SponsorFlow Portal",
+    subtitle: "Sponnect Portal",
   });
 
   const { title, subtitle } = (getTabTitle || defaultGetTabTitle)(activeTab);
@@ -152,7 +149,7 @@ export default function Topbar({ onOpenMobileSidebar, activeTab, currentUser, no
 
                 <div className="p-2.5 bg-[var(--bg-surface-alt)] border-t border-[var(--border-subtle)] text-center">
                   <span className="text-xs text-[var(--text-secondary)] font-medium">
-                    SponsorFlow Notification Hub
+                    Sponnect Notification Hub
                   </span>
                 </div>
               </div>
@@ -196,7 +193,7 @@ export default function Topbar({ onOpenMobileSidebar, activeTab, currentUser, no
                 <button
                   onClick={() => {
                     setProfileDropdownOpen(false);
-                    alert("Profile clicked (Mock view)");
+                    setShowProfileModal(true);
                   }}
                   className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-surface-alt)] font-medium transition-colors cursor-pointer"
                 >
@@ -207,7 +204,7 @@ export default function Topbar({ onOpenMobileSidebar, activeTab, currentUser, no
                 <button
                   onClick={() => {
                     setProfileDropdownOpen(false);
-                    alert("Settings clicked (Mock view)");
+                    setShowProfileModal(true);
                   }}
                   className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-[var(--text-primary)] hover:bg-[var(--bg-surface-alt)] font-medium transition-colors cursor-pointer"
                 >
@@ -233,6 +230,54 @@ export default function Topbar({ onOpenMobileSidebar, activeTab, currentUser, no
 
         </div>
       </div>
+
+      {/* Profile & Settings Modal */}
+      <Modal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        title="User Profile & Account"
+        icon={User}
+        maxWidth="max-w-md"
+      >
+        <div className="p-6 space-y-4 font-sans-ui text-xs text-[var(--text-primary)]">
+          <div className="flex items-center gap-3 bg-[var(--bg-surface-alt)] p-4 rounded-2xl border border-[var(--border-subtle)]">
+            <div className="w-12 h-12 rounded-xl bg-[var(--brand-primary)] text-white flex items-center justify-center font-bold text-lg">
+              {currentUser?.avatar || currentUser?.name?.substring(0, 2).toUpperCase() || "US"}
+            </div>
+            <div>
+              <h4 className="text-base font-bold text-[var(--text-primary)]">{currentUser?.name || "Logged In User"}</h4>
+              <p className="text-xs text-[var(--text-secondary)]">{currentUser?.email}</p>
+              <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--brand-primary)]/15 text-[var(--brand-primary)]">
+                {currentUser?.role}
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-2 bg-[var(--bg-surface-alt)] p-4 rounded-2xl border border-[var(--border-subtle)]">
+            <div className="flex justify-between">
+              <span className="font-mono font-bold text-[var(--brand-royal)] uppercase">Organization / College</span>
+              <span className="font-semibold">{currentUser?.college || currentUser?.company || "VESIT"}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="font-mono font-bold text-[var(--brand-royal)] uppercase">Role Title</span>
+              <span className="font-semibold">{currentUser?.role || "Committee Head"}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="font-mono font-bold text-[var(--brand-royal)] uppercase">Database Session</span>
+              <span className="font-bold text-emerald-500">Connected to MongoDB</span>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button
+              onClick={() => setShowProfileModal(false)}
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-[var(--brand-primary)] text-white cursor-pointer"
+            >
+              Close Profile
+            </button>
+          </div>
+        </div>
+      </Modal>
     </header>
   );
 }

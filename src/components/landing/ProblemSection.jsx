@@ -27,7 +27,7 @@ const problems = [
 
 export default function ProblemSection() {
   return (
-    <section id="why-sponsorflow" className="py-20 bg-offWhite relative">
+    <section id="why-sponnect" className="py-20 bg-offWhite relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Title */}
@@ -72,7 +72,7 @@ export default function ProblemSection() {
                 </div>
 
                 <div className="pt-4 border-t border-taupe/20 text-xs text-espresso/70 font-semibold flex items-center gap-1">
-                  <span>Eliminated by SponsorFlow</span>
+                  <span>Eliminated by Sponnect</span>
                 </div>
               </div>
             );
@@ -85,7 +85,7 @@ export default function ProblemSection() {
             <ShieldCheck className="w-4 h-4" /> Seamless Ecosystem Solution
           </div>
           <h3 className="text-xl sm:text-2xl font-black text-offWhite">
-            SponsorFlow brings the entire process together.
+            Sponnect brings the entire process together.
           </h3>
           <p className="text-xs sm:text-sm text-offWhite/80 max-w-xl mx-auto leading-relaxed">
             From discovering potential partners and structuring monetary or non-monetary commitments to securing faculty sign-offs and verifying deliverable proofs — everything lives in one structured workflow.

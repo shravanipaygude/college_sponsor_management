@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { Search, Eye, Heart, Users, Calendar, Tag, Bookmark, X, SlidersHorizontal, Check } from "lucide-react";
 import { useSavedItems } from "../../hooks/useSavedItems";
 import { useAuth } from "../../hooks/useAuth";
-import { createPartnershipRequest } from "../../store/slices/requestSlice";
-import { incrementBrandsInterested } from "../../store/slices/sponsorshipSlice";
+import { createPartnershipRequest, createPartnershipRequestThunk } from "../../store/slices/requestSlice";
+import { incrementBrandsInterested, fetchEventsThunk } from "../../store/slices/sponsorshipSlice";
 import { addNotification } from "../../store/slices/notificationSlice";
+import Modal from "../common/Modal";
 
 const eventTypeFilters = [
   "All", "Hackathon", "Technical Festival", "Workshop",
@@ -32,12 +33,17 @@ export default function DiscoverEvents() {
   const sponsorshipPosts = useSelector((state) => state.sponsorship.posts);
   const requests = useSelector((state) => state.requests.items);
 
+  useEffect(() => {
+    dispatch(fetchEventsThunk());
+  }, [dispatch]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [eventTypeFilter, setEventTypeFilter] = useState("All");
   const [sponsorshipFilter, setSponsorshipFilter] = useState("All");
   const [participantFilter, setParticipantFilter] = useState(0);
   const [toastMessage, setToastMessage] = useState("");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [selectedPostForView, setSelectedPostForView] = useState(null);
 
   const { user } = useAuth();
 
@@ -59,59 +65,60 @@ export default function DiscoverEvents() {
   };
 
   const isInterestExpressed = (post) => {
-    const currentSponsorId = user?.id || "demo_sponsor_1";
+    if (!user) return false;
+    const currentUserId = String(user._id || user.id || "");
+    const targetEventId = String(post._id || post.id || "");
+
+    if (!currentUserId || !targetEventId) return false;
 
     return requests.some((r) => {
-      const isSponsorSender =
-        r.senderRole === "sponsor" ||
-        r.senderRole === "Corporate Sponsor" ||
-        r.senderRole === "brand";
+      const reqSender = String(r.sender?._id || r.sender || r.senderId || "");
+      const reqEvent = String(r.event?._id || r.event || r.sponsorshipPostId || r.eventId || "");
 
-      if (!isSponsorSender) return false;
+      if (!reqSender || !reqEvent) return false;
 
-      const isCurrentSponsor =
-        r.senderId === currentSponsorId ||
-        (!user?.id && r.senderId === "demo_sponsor_1");
+      const isSenderMatch = reqSender === currentUserId;
+      const isEventMatch = reqEvent === targetEventId;
+      const isPendingOrAccepted = (r.status || "").toLowerCase() === "pending" || (r.status || "").toLowerCase() === "accepted";
 
-      if (!isCurrentSponsor) return false;
-
-      const isPostMatch =
-        (r.sponsorshipPostId && String(r.sponsorshipPostId) === String(post.id)) ||
-        (r.eventId && String(r.eventId) === String(post.id));
-
-      if (!isPostMatch) return false;
-
-      return r.status !== "Declined";
+      return isSenderMatch && isEventMatch && isPendingOrAccepted;
     });
   };
 
   const handleExpressInterest = (post) => {
-    const brandName = user?.company || user?.name || "NovaAI Technologies";
-    const brandLogo = user?.company ? user.company.substring(0, 2).toUpperCase() : "NA";
+    const brandName = user?.organizationName || user?.company || user?.name || "Corporate Sponsor";
+    const brandLogo = brandName ? brandName.substring(0, 2).toUpperCase() : "CS";
+    const currentUserId = user?._id || user?.id;
+    const targetEventId = post._id || post.id;
+    const targetCommitteeId = post.createdBy?._id || post.createdBy || post.committeeId;
 
-    dispatch(
-      createPartnershipRequest({
-        sponsorshipPostId: post.id,
-        eventName: post.eventName,
-        collegeName: post.collegeName || "VESIT",
-        collegeLogo: post.collegeLogo || "VE",
-        senderId: user?.id || "demo_sponsor_1",
-        senderName: brandName,
-        senderRole: "sponsor",
-        receiverId: post.committeeId || "demo_committee_1",
-        receiverName: post.collegeName ? `${post.collegeName} Committee` : "CSI Student Chapter",
-        receiverRole: "committee",
-        brandName: brandName,
-        brandLogo: brandLogo,
-        offering: "₹20,000 Monetary + 100 AI Credit Vouchers",
-        interestedIn: post.canOffer ? post.canOffer.slice(0, 3) : ["Main Stage Branding"],
-        requesting: ["Stage Branding", "Instagram Promotion"],
-        theyOffer: post.canOffer ? post.canOffer.slice(0, 3) : ["Main Stage Branding"],
-        estimatedValue: "₹50,000",
-        message: `${brandName} expressed interest in sponsoring ${post.eventName}.`,
-        status: "Pending",
-      })
-    );
+    const requestPayload = {
+      sponsorshipPostId: targetEventId,
+      eventId: targetEventId,
+      eventName: post.eventName || post.title || "College Event",
+      collegeName: post.collegeName || "VESIT",
+      collegeLogo: post.collegeLogo || "VE",
+      senderId: currentUserId,
+      sender: currentUserId,
+      senderName: brandName,
+      senderRole: "sponsor",
+      receiverId: targetCommitteeId,
+      receiver: targetCommitteeId,
+      receiverName: post.committeeName || (post.collegeName ? `${post.collegeName} Committee` : "College Committee"),
+      receiverRole: "committee",
+      brandName: brandName,
+      brandLogo: brandLogo,
+      offering: "₹20,000 Monetary + 100 AI Credit Vouchers",
+      interestedIn: post.canOffer ? post.canOffer.slice(0, 3) : ["Main Stage Branding"],
+      requesting: ["Stage Branding", "Instagram Promotion"],
+      theyOffer: post.canOffer ? post.canOffer.slice(0, 3) : ["Main Stage Branding"],
+      estimatedValue: "₹50,000",
+      message: `${brandName} expressed interest in sponsoring ${post.eventName || post.title}.`,
+      status: "Pending",
+    };
+
+    dispatch(createPartnershipRequestThunk(requestPayload));
+    dispatch(createPartnershipRequest(requestPayload));
 
     dispatch(incrementBrandsInterested(post.id));
 
@@ -384,7 +391,7 @@ export default function DiscoverEvents() {
                 {/* Actions */}
                 <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-surface)] flex gap-2">
                   <button
-                    onClick={() => alert(`Viewing event: ${post.eventName}`)}
+                    onClick={() => setSelectedPostForView(post)}
                     className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold text-[var(--text-primary)] bg-[var(--bg-card)] hover:bg-[var(--bg-surface-alt)] border border-[var(--border-subtle)] transition-colors cursor-pointer"
                   >
                     <Eye className="w-3.5 h-3.5" />
@@ -424,6 +431,76 @@ export default function DiscoverEvents() {
           </button>
         </div>
       )}
+
+      {/* View Event Modal */}
+      <Modal
+        isOpen={!!selectedPostForView}
+        onClose={() => setSelectedPostForView(null)}
+        title={selectedPostForView?.eventName || selectedPostForView?.title || "Event Details"}
+        icon={Eye}
+        maxWidth="max-w-lg"
+      >
+        {selectedPostForView && (
+          <div className="p-6 space-y-4 font-sans-ui text-xs text-[var(--text-primary)]">
+            <div className="bg-[var(--bg-surface-alt)] p-4 rounded-2xl border border-[var(--border-subtle)] space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="font-mono font-bold text-[var(--brand-royal)] uppercase">College / Committee</span>
+                <span className="font-semibold">{selectedPostForView.collegeName || "VESIT"} ({selectedPostForView.committeeName || "CSI Student Chapter"})</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-mono font-bold text-[var(--brand-royal)] uppercase">Event Date</span>
+                <span className="font-semibold">{selectedPostForView.eventDate}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-mono font-bold text-[var(--brand-royal)] uppercase">Category</span>
+                <span className="font-semibold">{selectedPostForView.eventType || "Technical Festival"}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-mono font-bold text-[var(--brand-royal)] uppercase">Expected Participants</span>
+                <span className="font-bold text-[var(--brand-primary)]">{selectedPostForView.participants || "500+"}</span>
+              </div>
+            </div>
+
+            <div>
+              <p className="font-mono font-bold text-[var(--brand-royal)] uppercase mb-1">Description</p>
+              <p className="text-xs text-[var(--text-primary)] leading-relaxed">
+                {selectedPostForView.description || `${selectedPostForView.eventName} organized by ${selectedPostForView.committeeName || "Committee"}.`}
+              </p>
+            </div>
+
+            <div>
+              <p className="font-mono font-bold text-[var(--brand-royal)] uppercase mb-1.5">Looking For</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(selectedPostForView.lookingFor || []).map((item, i) => (
+                  <span key={i} className="px-2.5 py-1 bg-[var(--bg-surface-alt)] rounded-lg text-xs font-medium border border-[var(--border-subtle)]">
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="font-mono font-bold text-[var(--brand-royal)] uppercase mb-1.5">Can Offer</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(selectedPostForView.canOffer || []).map((item, i) => (
+                  <span key={i} className="px-2.5 py-1 bg-[var(--brand-primary)]/15 text-[var(--brand-primary)] rounded-lg text-xs font-medium border border-[var(--border-subtle)]">
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => setSelectedPostForView(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-[var(--brand-primary)] text-white cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

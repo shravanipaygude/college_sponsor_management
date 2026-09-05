@@ -9,9 +9,8 @@ const notificationSlice = createSlice({
   name: "notifications",
   initialState: {
     items: [
-      ...notificationsData.committee.map((n) => ({ ...n, role: "Committee Head" })),
-      ...notificationsData.sponsor.map((n) => ({ ...n, role: "Corporate Sponsor" })),
-      ...notificationsData.faculty.map((n) => ({ ...n, role: "Faculty Approver" })),
+      ...(notificationsData.committee || []).map((n) => ({ ...n, role: "Committee Head" })),
+      ...(notificationsData.sponsor || []).map((n) => ({ ...n, role: "Corporate Sponsor" })),
     ],
   },
   reducers: {

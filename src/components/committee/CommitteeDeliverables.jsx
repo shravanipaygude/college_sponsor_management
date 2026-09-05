@@ -1,19 +1,25 @@
 import React, { useState } from "react";
+import { useSelector } from "react-redux";
 import { Eye, Upload, Image as ImageIcon, CheckCircle } from "lucide-react";
 import StatusBadge from "../common/StatusBadge";
 import Modal from "../common/Modal";
-import { committeeDeliverables as initialDeliverables } from "../../data/mockData";
 
 export default function CommitteeDeliverables() {
-  const [deliverables, setDeliverables] = useState(initialDeliverables);
-  const [selectedDeliverable, setSelectedDeliverable] = useState(null);
+  const partnerships = useSelector((state) => state.partnerships.items);
+  const deliverables = partnerships.flatMap((p) =>
+    (p.deliverables || p.committeeProvides || ["Main Stage Branding"]).map((item, idx) => ({
+      id: `${p._id || p.id}_${idx}`,
+      brandName: p.brandName || p.sponsorName || "Sponsor",
+      eventName: p.eventName || "College Event",
+      deliverable: item,
+      description: `Deliverable agreed for ${p.eventName}`,
+      status: p.status === "Approved" ? "Completed" : "In Progress",
+      proofUrl: null,
+      updatedAt: "Recently",
+    }))
+  );
 
-  const handleUploadProof = (id) => {
-    setDeliverables(deliverables.map((d) =>
-      d.id === id ? { ...d, status: "Proof Submitted", proofUrl: "mock_proof_uploaded.jpg", updatedAt: "Just now" } : d
-    ));
-    setSelectedDeliverable(null);
-  };
+  const [selectedDeliverable, setSelectedDeliverable] = useState(null);
 
   // Group deliverables by brand
   const grouped = deliverables.reduce((acc, d) => {
@@ -31,7 +37,14 @@ export default function CommitteeDeliverables() {
       </div>
 
       {/* Grouped Deliverables */}
-      {Object.entries(grouped).map(([brand, items]) => (
+      {deliverables.length === 0 ? (
+        <div className="bg-[var(--bg-card)] p-8 rounded-3xl border border-[var(--border-subtle)] text-center space-y-2">
+          <CheckCircle className="w-8 h-8 text-[var(--brand-royal)] mx-auto opacity-50" />
+          <h3 className="text-sm font-bold text-[var(--text-primary)]">No deliverables submitted yet</h3>
+          <p className="text-xs text-[var(--text-secondary)]">Deliverables will appear here once active partnerships are formed.</p>
+        </div>
+      ) : (
+        Object.entries(grouped).map(([brand, items]) => (
         <div key={brand} className="bg-white rounded-2xl border border-taupe/30 shadow-sm overflow-hidden">
           <div className="bg-espresso px-5 py-3 text-offWhite flex items-center justify-between">
             <h3 className="text-sm font-bold">{brand} × {items[0]?.eventName}</h3>
@@ -57,7 +70,7 @@ export default function CommitteeDeliverables() {
             ))}
           </div>
         </div>
-      ))}
+      )))}
 
       {/* Deliverable Detail Modal */}
       <Modal
@@ -103,9 +116,9 @@ export default function CommitteeDeliverables() {
                   <p className="text-xs text-brown">No proof uploaded yet</p>
                   <button
                     onClick={() => handleUploadProof(selectedDeliverable.id)}
-                    className="px-4 py-2 rounded-xl text-xs font-bold bg-espresso text-offWhite hover:bg-darkBrown transition-colors"
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-espresso text-offWhite hover:bg-darkBrown transition-colors cursor-pointer"
                   >
-                    Upload Mock Proof
+                    Upload Completion Proof
                   </button>
                 </div>
               )}

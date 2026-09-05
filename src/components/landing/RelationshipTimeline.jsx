@@ -95,7 +95,7 @@ export default function RelationshipTimeline() {
             <span className="font-editorial italic font-bold text-[#6D42C1]">with every event.</span>
           </h2>
           <p className="text-sm sm:text-base font-sans-ui text-[#746286] max-w-lg mx-auto font-medium">
-            No more asking who sponsored us last year. SponsorFlow remembers the relationship.
+            No more asking who sponsored us last year. Sponnect remembers the relationship.
           </p>
         </div>
 

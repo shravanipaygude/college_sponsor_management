@@ -44,8 +44,8 @@ export default function LandingNavbar({ onNavigateToAuth, theme: propTheme, togg
             <Award className="w-5 h-5 text-white" />
           </div>
           <span className="text-xl font-display font-black tracking-tight flex items-center gap-1 text-[var(--text-primary)]">
-            <span>Sponsor</span>
-            <span className="text-[var(--brand-royal)]">Flow</span>
+            <span>Spon</span>
+            <span className="text-[var(--brand-royal)]">nect</span>
             <Sparkles className="w-4 h-4 text-[var(--accent-pink)] fill-[var(--accent-pink)]" />
           </span>
         </div>

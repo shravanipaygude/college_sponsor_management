@@ -1,9 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useDispatch } from "react-redux";
 import {
   LayoutDashboard, Search, Calendar, FileText, Inbox,
   Handshake, FileCheck, CheckSquare, Settings, Building2,
   Megaphone, Eye, Clock, History, XCircle, CheckCircle, Bookmark,
 } from "lucide-react";
+
+import { fetchEventsThunk, fetchOpportunitiesThunk } from "./store/slices/sponsorshipSlice";
+import { fetchRequestsThunk } from "./store/slices/requestSlice";
+import { fetchPartnershipsThunk } from "./store/slices/partnershipSlice";
 
 // Auth — Experiment 2
 import { useAuth } from "./hooks/useAuth";
@@ -23,7 +28,6 @@ import CommitteeIncomingRequests from "./components/committee/CommitteeIncomingR
 import CommitteePartnerships from "./components/committee/CommitteePartnerships";
 import CommitteeDeals from "./components/committee/CommitteeDeals";
 import CommitteeDeliverables from "./components/committee/CommitteeDeliverables";
-import CommitteeFacultyApprovals from "./components/committee/CommitteeFacultyApprovals";
 import SavedSponsors from "./components/committee/SavedSponsors";
 
 // Sponsor Components
@@ -36,13 +40,6 @@ import SponsorDeals from "./components/sponsor/SponsorDeals";
 import SponsorDeliverableReview from "./components/sponsor/SponsorDeliverableReview";
 import SavedEvents from "./components/sponsor/SavedEvents";
 
-// Faculty Components
-import FacultyDashboard from "./components/faculty/FacultyDashboard";
-import PendingApprovals from "./components/faculty/PendingApprovals";
-import ApprovedDeals from "./components/faculty/ApprovedDeals";
-import RejectedDeals from "./components/faculty/RejectedDeals";
-import ApprovalHistory from "./components/faculty/ApprovalHistory";
-
 // Data
 import { notificationsData } from "./data/mockData";
 
@@ -50,36 +47,21 @@ import { notificationsData } from "./data/mockData";
 
 const committeeNavItems = [
   { name: "Dashboard", icon: LayoutDashboard, id: "dashboard" },
-  { name: "Discover Sponsors", icon: Search, id: "discover_sponsors" },
   { name: "My Events", icon: Calendar, id: "my_events" },
-  { name: "Sponsorship Posts", icon: FileText, id: "sponsorship_posts" },
+  { name: "Discover Sponsors", icon: Search, id: "discover_sponsors" },
   { name: "Incoming Requests", icon: Inbox, id: "incoming_requests" },
   { name: "Partnerships", icon: Handshake, id: "partnerships" },
-  { name: "Deals", icon: FileCheck, id: "deals" },
-  { name: "Deliverables", icon: CheckSquare, id: "deliverables" },
-  { name: "Faculty Approvals", icon: CheckCircle, id: "faculty_approvals" },
   { name: "Saved Sponsors", icon: Bookmark, id: "saved_sponsors" },
   { name: "Settings", icon: Settings, id: "settings" },
 ];
 
 const sponsorNavItems = [
   { name: "Dashboard", icon: LayoutDashboard, id: "dashboard" },
-  { name: "Discover Events", icon: Search, id: "discover_events" },
   { name: "Our Opportunities", icon: Megaphone, id: "our_opportunities" },
+  { name: "Discover Events", icon: Search, id: "discover_events" },
   { name: "Incoming Requests", icon: Inbox, id: "incoming_requests" },
   { name: "Partnerships", icon: Handshake, id: "partnerships" },
-  { name: "Deals", icon: FileCheck, id: "deals" },
-  { name: "Deliverables", icon: Eye, id: "deliverables" },
   { name: "Saved Events", icon: Bookmark, id: "saved_events" },
-  { name: "Settings", icon: Settings, id: "settings" },
-];
-
-const facultyNavItems = [
-  { name: "Dashboard", icon: LayoutDashboard, id: "dashboard" },
-  { name: "Pending Approvals", icon: Clock, id: "pending_approvals" },
-  { name: "Approved Deals", icon: CheckCircle, id: "approved_deals" },
-  { name: "Rejected Deals", icon: XCircle, id: "rejected_deals" },
-  { name: "Approval History", icon: History, id: "approval_history" },
   { name: "Settings", icon: Settings, id: "settings" },
 ];
 
@@ -95,11 +77,10 @@ const committeeTabTitles = (tab) => {
     partnerships: { title: "Partnerships", subtitle: "Active negotiations with sponsors" },
     deals: { title: "Sponsorship Deals", subtitle: "Manage finalized agreements" },
     deliverables: { title: "Deliverables", subtitle: "Track promised benefits & proof" },
-    faculty_approvals: { title: "Faculty Approvals", subtitle: "Track approval status of submitted deals" },
     saved_sponsors: { title: "Saved Sponsors", subtitle: "Your bookmarked sponsorship opportunities" },
     settings: { title: "Settings", subtitle: "Committee preferences & configuration" },
   };
-  return titles[tab] || { title: "Dashboard", subtitle: "SponsorFlow" };
+  return titles[tab] || { title: "Dashboard", subtitle: "Sponnect" };
 };
 
 const sponsorTabTitles = (tab) => {
@@ -114,19 +95,7 @@ const sponsorTabTitles = (tab) => {
     saved_events: { title: "Saved Events", subtitle: "Your bookmarked college events" },
     settings: { title: "Settings", subtitle: "Brand preferences & configuration" },
   };
-  return titles[tab] || { title: "Dashboard", subtitle: "SponsorFlow" };
-};
-
-const facultyTabTitles = (tab) => {
-  const titles = {
-    dashboard: { title: "Dashboard", subtitle: "Approval overview & pending reviews" },
-    pending_approvals: { title: "Pending Approvals", subtitle: "Deals awaiting your review" },
-    approved_deals: { title: "Approved Deals", subtitle: "Previously approved sponsorship deals" },
-    rejected_deals: { title: "Rejected Deals", subtitle: "Deals sent back for revision" },
-    approval_history: { title: "Approval History", subtitle: "Complete record of approval actions" },
-    settings: { title: "Settings", subtitle: "Faculty preferences & configuration" },
-  };
-  return titles[tab] || { title: "Dashboard", subtitle: "SponsorFlow" };
+  return titles[tab] || { title: "Dashboard", subtitle: "Sponnect" };
 };
 
 // ─── Role Labels ─────────────────────────────────────────────
@@ -134,20 +103,27 @@ const facultyTabTitles = (tab) => {
 const roleLabels = {
   committee: "Committee Head Portal",
   sponsor: "Corporate Sponsor Portal",
-  faculty: "Faculty Approver Portal",
 };
 
 // ─── App Component ───────────────────────────────────────────
 
 /**
- * SponsorFlow — College Sponsorship Discovery & Management Portal
+ * Sponnect — College Sponsorship Discovery & Management Portal
  *
  * Experiment 2: Authentication via AuthContext replaces the Experiment 1
  * role switcher. The logged-in user's role determines which interface loads.
  */
 export default function App() {
+  const dispatch = useDispatch();
   // useAuth is a custom hook for accessing AuthContext.
   const { user, role, isAuthenticated, loading, logout } = useAuth();
+
+  useEffect(() => {
+    dispatch(fetchEventsThunk());
+    dispatch(fetchOpportunitiesThunk());
+    dispatch(fetchRequestsThunk());
+    dispatch(fetchPartnershipsThunk());
+  }, [dispatch]);
 
   const [activeTab, setActiveTab] = useState("dashboard");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -169,9 +145,9 @@ export default function App() {
       <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-primary)] flex items-center justify-center font-sans-ui">
         <div className="text-center space-y-3">
           <div className="w-12 h-12 rounded-2xl bg-[var(--brand-primary)] text-white flex items-center justify-center font-bold text-lg mx-auto animate-pulse shadow-lg">
-            SF
+            SP
           </div>
-          <p className="text-sm text-[var(--text-secondary)] font-medium">Loading SponsorFlow...</p>
+          <p className="text-sm text-[var(--text-secondary)] font-medium">Loading Sponnect...</p>
         </div>
       </div>
     );
@@ -193,17 +169,17 @@ export default function App() {
 
   // ── Authenticated Dashboard ──────────────────────────────────
 
-  // Determine role from authenticated user (NOT from manual switcher)
-  const currentRole = role || "committee";
+  // Safely handle unsupported role (e.g. legacy faculty session)
+  if (role === "faculty") {
+    logout();
+    return null;
+  }
+
+  const currentRole = role === "sponsor" ? "sponsor" : "committee";
 
   // Get role-specific config
-  const navItems = currentRole === "committee" ? committeeNavItems
-    : currentRole === "sponsor" ? sponsorNavItems
-    : facultyNavItems;
-
-  const getTabTitle = currentRole === "committee" ? committeeTabTitles
-    : currentRole === "sponsor" ? sponsorTabTitles
-    : facultyTabTitles;
+  const navItems = currentRole === "sponsor" ? sponsorNavItems : committeeNavItems;
+  const getTabTitle = currentRole === "sponsor" ? sponsorTabTitles : committeeTabTitles;
 
   // Build currentUser object for Topbar from auth context
   const currentUser = {
@@ -240,8 +216,6 @@ export default function App() {
           return <CommitteeDeals />;
         case "deliverables":
           return <CommitteeDeliverables />;
-        case "faculty_approvals":
-          return <CommitteeFacultyApprovals />;
         case "saved_sponsors":
           return <SavedSponsors />;
         case "settings":
@@ -274,26 +248,6 @@ export default function App() {
           return <SettingsPlaceholder role="Corporate Sponsor" onBack={() => setActiveTab("dashboard")} />;
         default:
           return <SponsorDashboard onNavigate={setActiveTab} />;
-      }
-    }
-
-    // ── Faculty Approver ──
-    if (currentRole === "faculty") {
-      switch (activeTab) {
-        case "dashboard":
-          return <FacultyDashboard onNavigate={setActiveTab} />;
-        case "pending_approvals":
-          return <PendingApprovals />;
-        case "approved_deals":
-          return <ApprovedDeals />;
-        case "rejected_deals":
-          return <RejectedDeals />;
-        case "approval_history":
-          return <ApprovalHistory />;
-        case "settings":
-          return <SettingsPlaceholder role="Faculty Approver" onBack={() => setActiveTab("dashboard")} />;
-        default:
-          return <FacultyDashboard onNavigate={setActiveTab} />;
       }
     }
 

@@ -95,15 +95,20 @@ export default function DeliverableModal({ deliverable, onClose }) {
             Close
           </button>
 
-          <button
-            onClick={() =>
-              alert(`Opening proof artifact: ${deliverable.proofUrl} (Mock View)`)
-            }
-            className="px-4 py-2 rounded-xl text-xs font-bold bg-espresso text-offWhite hover:bg-darkBrown transition-colors flex items-center gap-1.5 shadow-sm"
+          <a
+            href={deliverable.proofUrl || "#"}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => {
+              if (!deliverable.proofUrl || deliverable.proofUrl.includes("#")) {
+                e.preventDefault();
+              }
+            }}
+            className="px-4 py-2 rounded-xl text-xs font-bold bg-[var(--brand-primary)] text-white hover:opacity-90 transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5 text-taupe" />
+            <Download className="w-3.5 h-3.5" />
             <span>View Proof</span>
-          </button>
+          </a>
         </div>
       </div>
     </div>

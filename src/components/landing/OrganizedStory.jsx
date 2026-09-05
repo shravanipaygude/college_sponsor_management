@@ -70,7 +70,7 @@ export default function OrganizedStory() {
             className="bg-[#1A1131]/60 p-8 rounded-3xl border border-[#B99AE8]/20 space-y-4 opacity-50 relative overflow-hidden"
           >
             <div className="flex items-center justify-between border-b border-[#B99AE8]/20 pb-3 text-xs font-mono font-bold text-[#C9BADB]/80">
-              <span>BEFORE SPONSORFLOW</span>
+              <span>BEFORE SPONNECT</span>
               <span className="text-[#FF9CC5]">Scattered Workflow</span>
             </div>
 
@@ -89,7 +89,7 @@ export default function OrganizedStory() {
             </div>
           </div>
 
-          {/* Right: SponsorFlow Organized System (Fading In) */}
+          {/* Right: Sponnect Organized System (Fading In) */}
           <div
             ref={rightOrganizedRef}
             className="bg-[#1A1131]/95 p-8 rounded-3xl border border-[#D8C9EE]/40 shadow-2xl space-y-6"
@@ -97,7 +97,7 @@ export default function OrganizedStory() {
             <div className="flex items-center justify-between border-b border-[#D8C9EE]/20 pb-3 text-xs font-mono font-bold text-[#D8C9EE]">
               <span className="flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-[#D8C9EE]" />
-                WITH SPONSORFLOW
+                WITH SPONNECT
               </span>
               <span className="px-2 py-0.5 rounded bg-[#6D42C1]/30 text-[#FF9CC5] border border-[#FF6FAE]/30">Single Network</span>
             </div>

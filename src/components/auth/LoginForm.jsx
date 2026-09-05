@@ -49,7 +49,7 @@ export default function LoginForm({ onSwitchToRegister }) {
       <div className="text-center mb-2">
         <h2 className="text-xl font-bold text-[var(--text-primary)]">Welcome Back</h2>
         <p className="text-xs text-[var(--text-secondary)] mt-1">
-          Sign in to continue to SponsorFlow.
+          Sign in to continue to Sponnect.
         </p>
       </div>
 
@@ -181,9 +181,8 @@ export default function LoginForm({ onSwitchToRegister }) {
           Demo Accounts
         </p>
         <div className="space-y-1 text-[11px] text-[var(--text-secondary)]">
-          <p><span className="font-semibold text-[var(--text-primary)]">Committee:</span> committee@sponsorflow.demo</p>
-          <p><span className="font-semibold text-[var(--text-primary)]">Sponsor:</span> sponsor@sponsorflow.demo</p>
-          <p><span className="font-semibold text-[var(--text-primary)]">Faculty:</span> faculty@sponsorflow.demo</p>
+          <p><span className="font-semibold text-[var(--text-primary)]">Committee:</span> committee@sponnect.demo</p>
+          <p><span className="font-semibold text-[var(--text-primary)]">Sponsor:</span> sponsor@sponnect.demo</p>
           <p className="text-[var(--text-muted)] mt-1 font-mono">Password: sponsor123</p>
         </div>
       </div>

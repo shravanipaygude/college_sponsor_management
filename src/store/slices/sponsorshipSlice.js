@@ -1,75 +1,140 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import {
-  sponsorshipPostsForBrand,
-  brandOpportunitiesForCommittee,
-} from "../../data/mockData.js";
+  api,
+  mapEventToPost,
+  mapPostToEventPayload,
+  mapOpportunityToUI,
+  mapOpportunityPayload,
+} from "../../services/api.js";
 
+// Async thunks for backend MongoDB synchronization
+export const fetchEventsThunk = createAsyncThunk(
+  "sponsorship/fetchEvents",
+  async (_, { rejectWithValue }) => {
+    try {
+      const events = await api.getEvents();
+      return events.map(mapEventToPost).filter(Boolean);
+    } catch (err) {
+      return rejectWithValue(err.message);
+    }
+  }
+);
 
-// Experiment 3 — Redux Toolkit Sponsorship Marketplace Slice
-// Manages shared sponsorship posts (Committee -> Sponsor) and brand opportunities (Sponsor -> Committee).
+export const createEventThunk = createAsyncThunk(
+  "sponsorship/createEvent",
+  async (postData, { rejectWithValue }) => {
+    try {
+      const payload = mapPostToEventPayload(postData);
+      const createdEvent = await api.createEvent(payload);
+      const mappedPost = mapEventToPost(createdEvent);
+      return { ...mappedPost, ...postData, id: mappedPost.id, _id: mappedPost._id };
+    } catch (err) {
+      return rejectWithValue(err.message);
+    }
+  }
+);
 
-// Format initial sponsorship posts from mock data
-const initialPosts = sponsorshipPostsForBrand.map((post) => ({
-  id: post.id,
-  committeeId: post.committeeId || 1,
-  committeeName: post.committeeName || "CSI Student Chapter",
-  collegeName: post.collegeName || "VESIT",
-  collegeLogo: post.collegeLogo || "VE",
-  eventName: post.eventName,
-  eventType: post.eventType,
-  eventDate: post.eventDate,
-  participants: post.participants,
-  participantsNumeric: post.participantsNumeric || 500,
-  lookingFor: post.lookingFor || [],
-  canOffer: post.canOffer || [],
-  sponsorshipNeeded: post.sponsorshipNeeded || "Hybrid",
-  brandsInterested: post.brandsInterested || 12,
-  status: post.status || "Active",
-  createdAt: post.createdAt || "2 weeks ago",
-}));
+export const fetchOpportunitiesThunk = createAsyncThunk(
+  "sponsorship/fetchOpportunities",
+  async (_, { rejectWithValue }) => {
+    try {
+      const opps = await api.getOpportunities();
+      return opps.map(mapOpportunityToUI).filter(Boolean);
+    } catch (err) {
+      return rejectWithValue(err.message);
+    }
+  }
+);
 
-// Format initial brand opportunities from mock data
-const initialOpportunities = brandOpportunitiesForCommittee.map((opp) => {
-  const lookingForList = opp.lookingFor || opp.expectations || [];
-  const canProvideList = (opp.canProvide || []).map((item) =>
-    typeof item === "string" ? item : item.item || item.name || String(item)
-  );
-  return {
-    id: opp.id,
-    sponsorId: opp.sponsorId || 1,
-    brandName: opp.brandName,
-    brandLogo: opp.brandLogo || "NA",
-    tagline: opp.tagline || "OPEN FOR COLLEGE SPONSORSHIPS",
-    industry: opp.industry || "AI / Technology",
-    contributionType: opp.contributionType || "Hybrid",
-    estimatedValue: opp.estimatedValue || "₹50,000",
-    estimatedValueNumeric: opp.estimatedValueNumeric || 50000,
-    interestedIn: opp.interestedIn || [],
-    canProvide: canProvideList,
-    expectations: lookingForList,
-    lookingFor: lookingForList,
-    about: opp.about || `${opp.brandName} is looking to support college events.`,
-    status: opp.status || "Active",
-    responses: opp.responses || 6,
-    createdAt: opp.createdAt || "2 weeks ago",
-  };
-});
+export const createOpportunityThunk = createAsyncThunk(
+  "sponsorship/createOpportunity",
+  async (oppData, { rejectWithValue }) => {
+    try {
+      const payload = mapOpportunityPayload(oppData);
+      const createdOpp = await api.createOpportunity(payload);
+      const mappedOpp = mapOpportunityToUI(createdOpp);
+      return { ...mappedOpp, ...oppData, id: mappedOpp.id, _id: mappedOpp._id };
+    } catch (err) {
+      return rejectWithValue(err.message);
+    }
+  }
+);
+
+export const updateEventThunk = createAsyncThunk(
+  "sponsorship/updateEvent",
+  async ({ id, eventData }, { rejectWithValue }) => {
+    try {
+      const payload = mapPostToEventPayload(eventData);
+      const updated = await api.updateEvent(id, payload);
+      const mapped = mapEventToPost(updated);
+      return { ...mapped, ...eventData, id: id, _id: id };
+    } catch (err) {
+      return rejectWithValue(err.message);
+    }
+  }
+);
+
+export const deleteEventThunk = createAsyncThunk(
+  "sponsorship/deleteEvent",
+  async (id, { rejectWithValue }) => {
+    try {
+      await api.deleteEvent(id);
+      return id;
+    } catch (err) {
+      return rejectWithValue(err.message);
+    }
+  }
+);
+
+export const updateOpportunityThunk = createAsyncThunk(
+  "sponsorship/updateOpportunity",
+  async ({ id, oppData }, { rejectWithValue }) => {
+    try {
+      const payload = mapOpportunityPayload(oppData);
+      const updated = await api.updateOpportunity(id, payload);
+      const mapped = mapOpportunityToUI(updated);
+      return { ...mapped, ...oppData, id: id, _id: id };
+    } catch (err) {
+      return rejectWithValue(err.message);
+    }
+  }
+);
+
+export const deleteOpportunityThunk = createAsyncThunk(
+  "sponsorship/deleteOpportunity",
+  async (id, { rejectWithValue }) => {
+    try {
+      await api.deleteOpportunity(id);
+      return id;
+    } catch (err) {
+      return rejectWithValue(err.message);
+    }
+  }
+);
 
 const sponsorshipSlice = createSlice({
   name: "sponsorship",
   initialState: {
-    posts: initialPosts,
-    opportunities: initialOpportunities,
+    posts: [],
+    opportunities: [],
+    loading: false,
+    error: null,
   },
   reducers: {
     addSponsorshipPost: (state, action) => {
+      const matchId = String(action.payload._id || action.payload.id);
+      const existingIdx = state.posts.findIndex((p) => String(p._id || p.id) === matchId);
+      if (existingIdx >= 0) {
+        state.posts[existingIdx] = action.payload;
+        return;
+      }
       const newPost = {
-        id: state.posts.length > 0 ? Math.max(...state.posts.map((p) => p.id)) + 1 : 1,
+        id: action.payload.id || (state.posts.length > 0 ? Math.max(...state.posts.map((p) => typeof p.id === 'number' ? p.id : 0)) + 1 : 1),
         committeeId: action.payload.committeeId || 1,
         committeeName: action.payload.committeeName || "CSI Student Chapter",
         collegeName: action.payload.collegeName || "VESIT",
         collegeLogo: action.payload.collegeLogo || "VE",
-        eventName: action.payload.eventName,
+        eventName: action.payload.eventName || action.payload.title,
         eventType: action.payload.eventType || "Technical Festival",
         eventDate: action.payload.eventDate || "TBD",
         participants: action.payload.participants || "500+",
@@ -80,13 +145,16 @@ const sponsorshipSlice = createSlice({
         brandsInterested: 0,
         status: "Active",
         createdAt: "Just now",
-        monetaryRange: action.payload.monetaryRange || null,
-        productsDetails: action.payload.productsDetails || null,
-        serviceDetails: action.payload.serviceDetails || null,
       };
       state.posts.unshift(newPost);
     },
     addBrandOpportunity: (state, action) => {
+      const matchId = String(action.payload._id || action.payload.id);
+      const existingIdx = state.opportunities.findIndex((o) => String(o._id || o.id) === matchId);
+      if (existingIdx >= 0) {
+        state.opportunities[existingIdx] = action.payload;
+        return;
+      }
       const expectationsList =
         action.payload.expectations || action.payload.lookingFor || [];
       const canProvideList = (action.payload.canProvide || []).map((item) =>
@@ -94,7 +162,7 @@ const sponsorshipSlice = createSlice({
       );
 
       const newOpp = {
-        id: state.opportunities.length > 0 ? Math.max(...state.opportunities.map((o) => o.id)) + 1 : 1,
+        id: action.payload.id || (state.opportunities.length > 0 ? Math.max(...state.opportunities.map((o) => typeof o.id === 'number' ? o.id : 0)) + 1 : 1),
         sponsorId: action.payload.sponsorId || 1,
         brandName: action.payload.brandName || "NovaAI Technologies",
         brandLogo: action.payload.brandLogo || "NA",
@@ -114,19 +182,116 @@ const sponsorshipSlice = createSlice({
       };
       state.opportunities.unshift(newOpp);
     },
-
     incrementBrandsInterested: (state, action) => {
-      const post = state.posts.find((p) => p.id === action.payload);
+      const post = state.posts.find((p) => String(p.id) === String(action.payload));
       if (post) {
         post.brandsInterested = (post.brandsInterested || 0) + 1;
       }
     },
     incrementOpportunityResponses: (state, action) => {
-      const opp = state.opportunities.find((o) => o.id === action.payload);
+      const opp = state.opportunities.find((o) => String(o.id) === String(action.payload));
       if (opp) {
         opp.responses = (opp.responses || 0) + 1;
       }
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      // Fetch Events
+      .addCase(fetchEventsThunk.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchEventsThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        const uniquePosts = [];
+        const seenIds = new Set();
+        (action.payload || []).forEach((post) => {
+          const idStr = String(post._id || post.id);
+          if (!seenIds.has(idStr)) {
+            seenIds.add(idStr);
+            uniquePosts.push(post);
+          }
+        });
+        state.posts = uniquePosts;
+      })
+      .addCase(fetchEventsThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Create Event
+      .addCase(createEventThunk.fulfilled, (state, action) => {
+        const matchId = String(action.payload._id || action.payload.id);
+        const existingIndex = state.posts.findIndex((p) => String(p._id || p.id) === matchId);
+        if (existingIndex >= 0) {
+          state.posts[existingIndex] = action.payload;
+        } else {
+          state.posts.unshift(action.payload);
+        }
+      })
+
+      // Fetch Opportunities
+      .addCase(fetchOpportunitiesThunk.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchOpportunitiesThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        const uniqueOpps = [];
+        const seenIds = new Set();
+        (action.payload || []).forEach((opp) => {
+          const idStr = String(opp._id || opp.id);
+          if (!seenIds.has(idStr)) {
+            seenIds.add(idStr);
+            uniqueOpps.push(opp);
+          }
+        });
+        state.opportunities = uniqueOpps;
+      })
+      .addCase(fetchOpportunitiesThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      // Create Opportunity
+      .addCase(createOpportunityThunk.fulfilled, (state, action) => {
+        const matchId = String(action.payload._id || action.payload.id);
+        const existingIndex = state.opportunities.findIndex((o) => String(o._id || o.id) === matchId);
+        if (existingIndex >= 0) {
+          state.opportunities[existingIndex] = action.payload;
+        } else {
+          state.opportunities.unshift(action.payload);
+        }
+      })
+
+      // Update Event
+      .addCase(updateEventThunk.fulfilled, (state, action) => {
+        const matchId = String(action.payload._id || action.payload.id);
+        const index = state.posts.findIndex((p) => String(p._id || p.id) === matchId);
+        if (index >= 0) {
+          state.posts[index] = { ...state.posts[index], ...action.payload };
+        }
+      })
+
+      // Delete Event
+      .addCase(deleteEventThunk.fulfilled, (state, action) => {
+        const matchId = String(action.payload);
+        state.posts = state.posts.filter((p) => String(p._id || p.id) !== matchId);
+      })
+
+      // Update Opportunity
+      .addCase(updateOpportunityThunk.fulfilled, (state, action) => {
+        const matchId = String(action.payload._id || action.payload.id);
+        const index = state.opportunities.findIndex((o) => String(o._id || o.id) === matchId);
+        if (index >= 0) {
+          state.opportunities[index] = { ...state.opportunities[index], ...action.payload };
+        }
+      })
+
+      // Delete Opportunity
+      .addCase(deleteOpportunityThunk.fulfilled, (state, action) => {
+        const matchId = String(action.payload);
+        state.opportunities = state.opportunities.filter((o) => String(o._id || o.id) !== matchId);
+      });
   },
 });
 

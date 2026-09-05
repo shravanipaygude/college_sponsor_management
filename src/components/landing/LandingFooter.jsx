@@ -104,7 +104,7 @@ export default function LandingFooter({ onNavigateToAuth }) {
                   onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
                   className="hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                 >
-                  About SponsorFlow
+                  About Sponnect
                 </button>
               </li>
             </ul>
@@ -115,9 +115,9 @@ export default function LandingFooter({ onNavigateToAuth }) {
         {/* Bottom Copyright */}
         <div className="pt-6 border-t border-[var(--border-subtle)] flex flex-col sm:flex-row items-center justify-between text-center sm:text-left text-[11px] text-[var(--text-muted)] font-medium gap-2">
           <p>
-            SponsorFlow — College Sponsorship Discovery &amp; Management Portal
+            Sponnect — College Sponsorship Discovery &amp; Management Portal
           </p>
-          <p>&copy; {new Date().getFullYear()} SponsorFlow. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Sponnect. All rights reserved.</p>
         </div>
 
       </div>

@@ -17,37 +17,31 @@ const decode = (str) => atob(str);
  */
 export const defaultDemoAccounts = [
   {
-    id: "demo_committee_1",
+    _id: "650000000000000000000001",
+    id: "650000000000000000000001",
     name: "Shravani",
-    email: "committee@sponsorflow.demo",
+    email: "committee@sponnect.demo",
     password: encode("sponsor123"),
     role: "committee",
     avatar: "SK",
     college: "VESIT",
-    committee: "CSI Student Chapter",
+    collegeName: "VESIT",
+    committee: "CSI",
+    organizationName: "CSI",
     roleLabel: "Committee Head",
   },
   {
-    id: "demo_sponsor_1",
+    _id: "650000000000000000000002",
+    id: "650000000000000000000002",
     name: "Arjun Mehta",
-    email: "sponsor@sponsorflow.demo",
+    email: "sponsor@sponnect.demo",
     password: encode("sponsor123"),
     role: "sponsor",
     avatar: "AM",
     company: "NovaAI Technologies",
+    organizationName: "NovaAI Technologies",
     industry: "AI / Technology",
     roleLabel: "Partnerships Lead",
-  },
-  {
-    id: "demo_faculty_1",
-    name: "Dr. Priya Sharma",
-    email: "faculty@sponsorflow.demo",
-    password: encode("sponsor123"),
-    role: "faculty",
-    avatar: "PS",
-    college: "VESIT",
-    department: "Computer Engineering",
-    roleLabel: "Faculty Approver",
   },
 ];
 
@@ -96,9 +90,27 @@ export function addUser(userData) {
     throw new Error("An account with this email already exists.");
   }
 
+  // Generate a valid 24-character Mongoose ObjectId string
+  const timestamp = Math.floor(Date.now() / 1000).toString(16).padStart(8, "0");
+  const randomHex = Array.from({ length: 16 }, () =>
+    Math.floor(Math.random() * 16).toString(16)
+  ).join("");
+  const hexId = timestamp + randomHex;
+
+  const collegeName = userData.collegeName || userData.college || "";
+  const organizationName =
+    userData.organizationName ||
+    userData.committee ||
+    userData.company ||
+    userData.college ||
+    "";
+
   const newUser = {
-    id: `user_${Date.now()}`,
+    _id: hexId,
+    id: hexId,
     ...userData,
+    collegeName,
+    organizationName,
     password: encode(userData.password),
   };
 

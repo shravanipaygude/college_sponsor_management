@@ -55,7 +55,7 @@ export default function MatchStory() {
             Match Found
           </h2>
           <p className="text-sm sm:text-base font-sans-ui text-[#C9BADB] max-w-lg mx-auto font-medium">
-            SponsorFlow matches event requirements directly with brand program criteria.
+            Sponnect matches event requirements directly with brand program criteria.
           </p>
         </div>
 

@@ -1,19 +1,57 @@
 import React, { useState } from "react";
-import { CheckCircle, XCircle, RotateCcw, FileCheck } from "lucide-react";
+import { useSelector, useDispatch } from "react-redux";
+import { CheckCircle, XCircle, RotateCcw } from "lucide-react";
 import StatusBadge from "../common/StatusBadge";
 import Modal from "../common/Modal";
-import { pendingApprovals as initialApprovals } from "../../data/mockData";
+import { updateFacultyApprovalThunk, updatePartnershipStatus } from "../../store/slices/partnershipSlice";
+import { useAuth } from "../../hooks/useAuth";
 
 export default function PendingApprovals() {
-  const [approvals, setApprovals] = useState(initialApprovals);
-  const [selectedDeal, setSelectedDeal] = useState(null);
+  const dispatch = useDispatch();
+  const { user } = useAuth();
+  const allPartnerships = useSelector((state) => state.partnerships.items);
+
+  const rawApprovals = allPartnerships.filter((p) => {
+    const facStatus = p.facultyApprovalStatus;
+    const uiStatus = p.status;
+    const isPending = facStatus === "pending" || uiStatus === "Awaiting Approval" || uiStatus === "Negotiation" || !facStatus;
+
+    if (!isPending) return false;
+    if (!user) return true;
+
+    const userCollege = (user?.collegeName || user?.college || "").toLowerCase();
+    const dealCollege = (p.collegeName || p.college || "").toLowerCase();
+
+    if (userCollege && dealCollege) {
+      return userCollege === dealCollege;
+    }
+    return true;
+  });
+
+  const approvals = Array.from(
+    new Map(rawApprovals.map((p) => [String(p._id || p.id), p])).values()
+  );
+
   const [showRemarksFor, setShowRemarksFor] = useState(null);
   const [remarks, setRemarks] = useState("");
   const [remarksAction, setRemarksAction] = useState(null);
 
-  const handleApprove = (id) => {
-    setApprovals(approvals.map((a) => a.id === id ? { ...a, status: "Approved" } : a));
-    setSelectedDeal(null);
+  const handleApprove = (deal) => {
+    const id = deal.id;
+    dispatch(
+      updateFacultyApprovalThunk({
+        partnershipId: id,
+        facultyApprovalStatus: "approved",
+        approvedBy: user?.name || "Faculty Approver",
+      })
+    );
+    dispatch(
+      updatePartnershipStatus({
+        id,
+        status: "Approved",
+        approvedBy: user?.name || "Faculty Approver",
+      })
+    );
   };
 
   const openRemarks = (id, action) => {
@@ -24,13 +62,28 @@ export default function PendingApprovals() {
 
   const submitRemarks = () => {
     if (showRemarksFor) {
-      const newStatus = remarksAction === "reject" ? "Rejected" : "Changes Requested";
-      setApprovals(approvals.map((a) =>
-        a.id === showRemarksFor ? { ...a, status: newStatus, remarks } : a
-      ));
+      const backendFacStatus = remarksAction === "reject" ? "rejected" : "rejected";
+      const uiStatus = remarksAction === "reject" ? "Rejected" : "Changes Requested";
+
+      dispatch(
+        updateFacultyApprovalThunk({
+          partnershipId: showRemarksFor,
+          facultyApprovalStatus: backendFacStatus,
+          facultyRemarks: remarks,
+          approvedBy: user?.name || "Faculty Approver",
+        })
+      );
+      dispatch(
+        updatePartnershipStatus({
+          id: showRemarksFor,
+          status: uiStatus,
+          facultyRemarks: remarks,
+          approvedBy: user?.name || "Faculty Approver",
+        })
+      );
+
       setShowRemarksFor(null);
       setRemarks("");
-      setSelectedDeal(null);
     }
   };
 
@@ -50,7 +103,7 @@ export default function PendingApprovals() {
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-white/20 text-white flex items-center justify-center font-bold text-lg border border-white/30">
-                    {deal.brandLogo}
+                    {deal.brandLogo || "NA"}
                   </div>
                   <div>
                     <p className="text-[10px] font-mono text-white/80 font-bold uppercase tracking-wider">Sponsorship Approval</p>
@@ -67,11 +120,11 @@ export default function PendingApprovals() {
               {/* Sponsor Provides */}
               <div>
                 <p className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider mb-2">Sponsor Provides</p>
-                {deal.sponsorProvides.map((item, i) => (
+                {(Array.isArray(deal.sponsorProvides) ? deal.sponsorProvides : Array.isArray(deal.brandOffers) ? deal.brandOffers.map(b => ({ item: b, type: "Monetary" })) : []).map((item, i) => (
                   <div key={i} className="flex items-center gap-2 p-2.5 bg-[var(--bg-surface-alt)] rounded-xl border border-[var(--border-subtle)] mb-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand-primary)] shrink-0" />
-                    <span className="text-xs text-[var(--text-primary)] font-medium flex-1">{item.item}</span>
-                    <span className="text-[9px] font-bold text-[var(--brand-primary)] bg-[var(--bg-card)] px-2 py-0.5 rounded-md border border-[var(--border-subtle)]">{item.type}</span>
+                    <span className="text-xs text-[var(--text-primary)] font-medium flex-1">{typeof item === 'string' ? item : item.item}</span>
+                    <span className="text-[9px] font-bold text-[var(--brand-primary)] bg-[var(--bg-card)] px-2 py-0.5 rounded-md border border-[var(--border-subtle)]">{typeof item === 'string' ? "Support" : item.type}</span>
                   </div>
                 ))}
               </div>
@@ -79,13 +132,13 @@ export default function PendingApprovals() {
               {/* Estimated Value */}
               <div className="bg-[var(--bg-surface-alt)] rounded-2xl px-4 py-3 border border-[var(--border-subtle)] text-center">
                 <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase">Estimated Total Value</p>
-                <p className="text-2xl font-black text-[var(--text-primary)]">{deal.estimatedTotalValue}</p>
+                <p className="text-2xl font-black text-[var(--text-primary)]">{deal.estimatedTotalValue || deal.estimatedValue || "₹50,000"}</p>
               </div>
 
               {/* College Promises */}
               <div>
                 <p className="text-xs font-mono font-bold text-[var(--brand-royal)] uppercase tracking-wider mb-2">College Promises</p>
-                {deal.collegePromises.map((item, i) => (
+                {(Array.isArray(deal.collegePromises) ? deal.collegePromises : Array.isArray(deal.committeeOffers) ? deal.committeeOffers : []).map((item, i) => (
                   <div key={i} className="flex items-center gap-2 p-2.5 bg-[var(--bg-surface-alt)] rounded-xl border border-[var(--border-subtle)] mb-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand-primary)] shrink-0" />
                     <span className="text-xs text-[var(--text-primary)] font-medium">{item}</span>
@@ -95,15 +148,15 @@ export default function PendingApprovals() {
 
               {/* Submitted Info */}
               <div className="text-xs text-[var(--text-secondary)] flex flex-wrap gap-3">
-                <span>Submitted by: <span className="font-semibold text-[var(--text-primary)]">{deal.submittedBy}</span></span>
-                <span>Submitted: <span className="font-semibold text-[var(--text-primary)]">{deal.submittedAt}</span></span>
+                <span>Submitted by: <span className="font-semibold text-[var(--text-primary)]">{deal.submittedBy || deal.committeeName}</span></span>
+                <span>Submitted: <span className="font-semibold text-[var(--text-primary)]">{deal.submittedAt || deal.createdAt || "Recently"}</span></span>
               </div>
 
               {/* Actions */}
-              {(!deal.status || deal.status === "Awaiting Approval") && (
+              {(!deal.facultyApprovalStatus || deal.facultyApprovalStatus === "pending" || deal.status === "Awaiting Approval" || deal.status === "Negotiation") && (
                 <div className="flex flex-wrap gap-2 pt-3 border-t border-[var(--border-subtle)]">
                   <button
-                    onClick={() => handleApprove(deal.id)}
+                    onClick={() => handleApprove(deal)}
                     className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-[var(--brand-primary)] text-white hover:opacity-90 transition-colors cursor-pointer shadow-sm"
                   >
                     <CheckCircle className="w-4 h-4" />
@@ -126,25 +179,25 @@ export default function PendingApprovals() {
                 </div>
               )}
 
-              {deal.status === "Approved" && (
+              {deal.facultyApprovalStatus === "approved" || deal.status === "Approved" ? (
                 <div className="pt-3 border-t border-[var(--border-subtle)]">
                   <p className="text-xs font-medium text-[var(--brand-royal)] flex items-center gap-1.5">
                     <CheckCircle className="w-4 h-4 text-[var(--brand-primary)]" />
                     Deal approved
                   </p>
                 </div>
-              )}
+              ) : null}
 
-              {(deal.status === "Rejected" || deal.status === "Changes Requested") && (
+              {(deal.facultyApprovalStatus === "rejected" || deal.status === "Rejected" || deal.status === "Changes Requested") && (
                 <div className="pt-3 border-t border-[var(--border-subtle)] space-y-2">
                   <p className="text-xs font-medium text-red-400 flex items-center gap-1.5">
                     <XCircle className="w-4 h-4 text-red-400" />
-                    {deal.status}
+                    {deal.status || "Rejected"}
                   </p>
-                  {deal.remarks && (
+                  {(deal.facultyRemarks || deal.remarks) && (
                     <div className="bg-[var(--bg-surface-alt)] rounded-xl p-3 border border-[var(--border-subtle)]">
                       <p className="text-[10px] font-mono font-bold text-[var(--brand-royal)] uppercase mb-1">Remarks</p>
-                      <p className="text-xs text-[var(--text-primary)]">{deal.remarks}</p>
+                      <p className="text-xs text-[var(--text-primary)]">{deal.facultyRemarks || deal.remarks}</p>
                     </div>
                   )}
                 </div>
@@ -153,6 +206,12 @@ export default function PendingApprovals() {
           </div>
         ))}
       </div>
+
+      {approvals.length === 0 && (
+        <div className="bg-[var(--bg-card)] rounded-3xl p-8 border border-[var(--border-subtle)] text-center">
+          <p className="text-sm text-[var(--text-secondary)]">No pending approvals at this time.</p>
+        </div>
+      )}
 
       {/* Remarks Modal */}
       <Modal

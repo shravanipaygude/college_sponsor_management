@@ -27,7 +27,7 @@ export default function AuthPage({
             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-[var(--bg-card)] text-[var(--text-primary)] text-xs font-bold border border-[var(--border-subtle)] shadow-sm hover:bg-[var(--bg-surface-alt)] transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4 text-[var(--brand-royal)]" />
-            <span>Back to SponsorFlow</span>
+            <span>Back to Sponnect</span>
           </button>
         ) : <div />}
 
@@ -118,7 +118,7 @@ export default function AuthPage({
 
         {/* Footer */}
         <p className="text-center text-[11px] text-[var(--text-muted)] mt-6">
-          SponsorFlow &copy; {new Date().getFullYear()} — College Sponsorship Portal
+          Sponnect &copy; {new Date().getFullYear()} — College Sponsorship Portal
         </p>
       </div>
     </div>

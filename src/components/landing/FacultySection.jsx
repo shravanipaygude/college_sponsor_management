@@ -38,7 +38,7 @@ export default function FacultySection() {
             Partnerships With Proper Oversight.
           </h2>
           <p className="text-base sm:text-lg text-brown font-medium">
-            SponsorFlow ensures that finalized sponsorship agreements are submitted for Faculty Approver review before becoming active.
+            Sponnect ensures that finalized sponsorship agreements are submitted for Faculty Approver review before becoming active.
           </p>
         </div>
 

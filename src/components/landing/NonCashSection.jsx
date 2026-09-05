@@ -69,7 +69,7 @@ export default function NonCashSection() {
             Sponsorship Is More Than Money.
           </h2>
           <p className="text-base sm:text-lg text-brown font-medium">
-            SponsorFlow supports both monetary and non-monetary partnerships to maximize event success and sponsor value.
+            Sponnect supports both monetary and non-monetary partnerships to maximize event success and sponsor value.
           </p>
         </div>
 

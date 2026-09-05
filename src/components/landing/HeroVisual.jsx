@@ -27,7 +27,7 @@ export default function HeroVisual() {
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-espresso"></span>
             </span>
             <span className="text-xs font-bold text-espresso uppercase tracking-wider">
-              Live SponsorFlow Match Visualizer
+              Live Sponnect Match Visualizer
             </span>
           </div>
           <div className="px-2.5 py-1 rounded-full bg-espresso/10 border border-taupe/30 text-[11px] font-bold text-espresso flex items-center gap-1">

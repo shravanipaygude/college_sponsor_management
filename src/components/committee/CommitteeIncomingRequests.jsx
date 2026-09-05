@@ -1,69 +1,109 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { Eye, Check, X, Clock } from "lucide-react";
 import StatusBadge from "../common/StatusBadge";
-import { acceptRequest, declineRequest } from "../../store/slices/requestSlice";
-import { createPartnership } from "../../store/slices/partnershipSlice";
+import Modal from "../common/Modal";
+import { acceptRequest, declineRequest, updateRequestStatusThunk, fetchRequestsThunk } from "../../store/slices/requestSlice";
+import { createPartnership, createPartnershipThunk } from "../../store/slices/partnershipSlice";
 import { addNotification } from "../../store/slices/notificationSlice";
+
+import { useAuth } from "../../hooks/useAuth";
 
 export default function CommitteeIncomingRequests() {
   const dispatch = useDispatch();
+  const { user } = useAuth();
   const allRequests = useSelector((state) => state.requests.items);
+  const [selectedRequestForView, setSelectedRequestForView] = useState(null);
+
+  useEffect(() => {
+    dispatch(fetchRequestsThunk());
+  }, [dispatch]);
 
   const requests = allRequests.filter((r) => {
-    const isCommitteeTarget =
-      r.receiverRole === "committee" ||
-      r.receiverRole === "Committee Head" ||
-      r.senderRole === "sponsor" ||
-      r.senderRole === "Corporate Sponsor" ||
-      r.senderRole === "brand";
+    if (!user) return false;
 
-    return isCommitteeTarget;
+    const userHexId = String(user._id || user.id || "");
+    const userOrg = (user.organizationName || user.committee || user.name || "").toLowerCase().trim();
+
+    const receiverHex = r.receiver ? String(r.receiver._id || r.receiver) : null;
+    if (receiverHex && userHexId && receiverHex === userHexId) {
+      return true;
+    }
+    const receiverIdStr = r.receiverId ? String(r.receiverId) : null;
+    if (receiverIdStr && userHexId && receiverIdStr === userHexId) {
+      return true;
+    }
+    const commName = (r.committeeName || r.receiverName || "").toLowerCase().trim();
+    if (commName && userOrg && commName === userOrg) {
+      return true;
+    }
+    return false;
   });
 
-  const handleAccept = (req) => {
-    dispatch(acceptRequest(req.id));
+  const [processingIds, setProcessingIds] = useState(new Set());
 
-    dispatch(
-      createPartnership({
-        requestId: req.id,
-        committeeId: req.receiverId || 1,
-        committeeName: "CSI Student Chapter",
-        sponsorId: req.senderId || 1,
-        sponsorName: req.brandName,
-        brandName: req.brandName,
+  const handleAccept = async (req) => {
+    const reqId = req._id || req.id;
+    if (processingIds.has(String(reqId))) return;
+
+    setProcessingIds((prev) => new Set(prev).add(String(reqId)));
+
+    try {
+      await dispatch(updateRequestStatusThunk({ requestId: reqId, status: "accepted" })).unwrap();
+      dispatch(acceptRequest(reqId));
+
+      const commHex = user?._id || user?.id;
+      const sponHex = req.sender ? (req.sender._id || req.sender).toString() : (req.senderId ? req.senderId.toString() : null);
+
+      const partnershipPayload = {
+        requestId: reqId,
+        sponsorshipPostId: req.sponsorshipPostId || req.eventId || req.event?._id || req.event || null,
+        eventId: req.sponsorshipPostId || req.eventId || req.event?._id || req.event || null,
+        opportunityId: req.opportunityId || req.opportunity?._id || req.opportunity || null,
+        committee: commHex,
+        committeeId: commHex,
+        committeeName: user?.organizationName || user?.committee || "College Committee",
+        sponsor: sponHex,
+        sponsorId: sponHex,
+        sponsorName: req.brandName || req.senderName || "Corporate Sponsor",
+        brandName: req.brandName || req.senderName || "Corporate Sponsor",
         brandLogo: req.brandLogo || "NA",
-        collegeName: "VESIT",
+        collegeName: user?.collegeName || user?.college || req.collegeName || "VESIT",
         collegeLogo: "VE",
-        eventName: req.eventName,
-        brandOffers: Array.isArray(req.offering) ? req.offering : [req.offering],
-        brandProvides: Array.isArray(req.offering) ? req.offering : [req.offering],
+        eventName: req.eventName || req.event?.title || "College Event",
+        brandOffers: Array.isArray(req.offering) ? req.offering : [req.offering || "Sponsorship"],
+        brandProvides: Array.isArray(req.offering) ? req.offering : [req.offering || "Sponsorship"],
         committeeOffers: req.interestedIn || ["Main Stage Branding", "Product Demo"],
         committeeProvides: req.interestedIn || ["Main Stage Branding", "Product Demo"],
         estimatedValue: req.estimatedValue || "₹50,000",
-        status: "Negotiation",
-      })
-    );
+        status: "Active",
+        facultyApprovalStatus: "approved",
+      };
 
-    dispatch(
-      addNotification({
-        role: "Committee Head",
-        title: "Partnership Accepted",
-        message: `Accepted request from ${req.brandName} for ${req.eventName}.`,
-      })
-    );
+      await dispatch(createPartnershipThunk(partnershipPayload)).unwrap();
 
-    dispatch(
-      addNotification({
-        role: "Corporate Sponsor",
-        title: "Request Accepted!",
-        message: `Your partnership request for ${req.eventName} was accepted.`,
-      })
-    );
+      dispatch(
+        addNotification({
+          role: "Committee Head",
+          title: "Partnership Accepted",
+          message: `Accepted request from ${req.brandName} for ${req.eventName}.`,
+        })
+      );
+    } catch (err) {
+      console.error("Accept request error:", err);
+    } finally {
+      setProcessingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(String(reqId));
+        return next;
+      });
+    }
   };
 
   const handleDecline = (req) => {
-    dispatch(declineRequest(req.id));
+    const reqId = req._id || req.id;
+    dispatch(updateRequestStatusThunk({ requestId: reqId, status: "declined" }));
+    dispatch(declineRequest(reqId));
     dispatch(
       addNotification({
         role: "Committee Head",
@@ -140,7 +180,7 @@ export default function CommitteeIncomingRequests() {
               {(req.status === "New" || req.status === "Pending") && (
                 <div className="flex flex-wrap gap-2 pt-2 border-t border-[var(--border-subtle)]">
                   <button
-                    onClick={() => alert(`Viewing full request from ${req.brandName}`)}
+                    onClick={() => setSelectedRequestForView(req)}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-[var(--text-primary)] bg-[var(--bg-surface-alt)] hover:border-[var(--brand-primary)] border border-[var(--border-subtle)] transition-colors cursor-pointer"
                   >
                     <Eye className="w-3.5 h-3.5" />
@@ -184,6 +224,57 @@ export default function CommitteeIncomingRequests() {
           <p className="text-sm text-[var(--text-secondary)]">No incoming requests at this time.</p>
         </div>
       )}
+
+      {/* View Request Modal */}
+      <Modal
+        isOpen={!!selectedRequestForView}
+        onClose={() => setSelectedRequestForView(null)}
+        title="Sponsorship Request Details"
+        icon={Eye}
+        maxWidth="max-w-lg"
+      >
+        {selectedRequestForView && (
+          <div className="p-6 space-y-4 font-sans-ui text-xs text-[var(--text-primary)]">
+            <div className="bg-[var(--bg-surface-alt)] p-4 rounded-2xl border border-[var(--border-subtle)] space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="font-mono font-bold text-[var(--brand-royal)] uppercase">From Sponsor</span>
+                <span className="font-semibold">{selectedRequestForView.brandName || selectedRequestForView.senderName || "Corporate Sponsor"}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-mono font-bold text-[var(--brand-royal)] uppercase">Target Event</span>
+                <span className="font-semibold">{selectedRequestForView.eventName || "Event"}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="font-mono font-bold text-[var(--brand-royal)] uppercase">Status</span>
+                <StatusBadge status={selectedRequestForView.status} />
+              </div>
+            </div>
+
+            <div>
+              <p className="font-mono font-bold text-[var(--brand-royal)] uppercase mb-1">Request Message</p>
+              <p className="text-xs text-[var(--text-primary)] leading-relaxed">
+                {selectedRequestForView.message || "No message attached."}
+              </p>
+            </div>
+
+            <div>
+              <p className="font-mono font-bold text-[var(--brand-royal)] uppercase mb-1">Offered by Sponsor</p>
+              <p className="text-xs text-[var(--brand-primary)] font-bold">
+                {selectedRequestForView.offering || selectedRequestForView.supportRequested || "Sponsorship & Vouchers"}
+              </p>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => setSelectedRequestForView(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-[var(--brand-primary)] text-white cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

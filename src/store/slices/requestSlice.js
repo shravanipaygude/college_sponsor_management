@@ -1,94 +1,85 @@
-import { createSlice } from "@reduxjs/toolkit";
-import {
-  committeeIncomingRequests,
-  brandIncomingRequests,
-} from "../../data/mockData.js";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { api, mapRequestToUI } from "../../services/api.js";
 
-// Experiment 3 — Redux Toolkit Request Slice
-// Manages partnership interest requests sent between Sponsors and Committees (both directions).
+// Async thunks for Requests API integration
+export const fetchRequestsThunk = createAsyncThunk(
+  "requests/fetchRequests",
+  async (_, { rejectWithValue }) => {
+    try {
+      const requests = await api.getRequests();
+      return requests.map(mapRequestToUI).filter(Boolean);
+    } catch (err) {
+      return rejectWithValue(err.message);
+    }
+  }
+);
 
-// Direction 1: Sponsor -> Committee requests (Sponsor expressing interest in Committee event)
-const initialCommitteeRequests = committeeIncomingRequests.map((req) => ({
-  id: req.id,
-  sponsorshipPostId: req.sponsorshipPostId || req.id,
-  opportunityId: null,
-  opportunityTitle: null,
-  eventName: req.eventName,
-  collegeName: req.collegeName || "VESIT",
-  collegeLogo: req.collegeLogo || "VE",
-  senderId: req.senderId || (req.brandName === "TechVault" ? "demo_sponsor_2" : req.brandName === "FitFuel" ? "demo_sponsor_3" : "demo_sponsor_1"),
-  senderName: req.brandName,
-  senderRole: "sponsor",
-  receiverId: req.receiverId || "demo_committee_1",
-  receiverName: "CSI Student Chapter",
-  receiverRole: "committee",
-  brandName: req.brandName,
-  brandLogo: req.brandLogo || "NA",
-  offering: req.offering || "₹20,000 + 100 AI Credit Vouchers",
-  requesting: Array.isArray(req.offering) ? req.offering : [req.offering],
-  interestedIn: req.interestedIn || ["Main Stage Branding", "Product Demo"],
-  theyOffer: req.interestedIn || ["Main Stage Branding", "Product Demo"],
-  estimatedValue: req.estimatedValue || "₹50,000",
-  message: req.message || `${req.brandName} expressed interest in partnering for ${req.eventName}.`,
-  status: req.status === "New" ? "Pending" : req.status,
-  createdAt: req.receivedAt || "2 hours ago",
-  receivedAt: req.receivedAt || "2 hours ago",
-}));
+export const createPartnershipRequestThunk = createAsyncThunk(
+  "requests/createPartnershipRequest",
+  async (requestData, { rejectWithValue }) => {
+    try {
+      // Build MongoDB Request payload
+      const payload = {
+        sender: requestData.sender || requestData.senderId || null,
+        receiver: requestData.receiver || requestData.receiverId || null,
+        senderRole: requestData.senderRole || "sponsor",
+        receiverRole: requestData.receiverRole || "committee",
+        event: requestData.sponsorshipPostId || requestData.eventId || null,
+        opportunity: requestData.opportunityId || null,
+        message: requestData.message || `Partnership request for ${requestData.eventName || "event"}`,
+        supportRequested: Array.isArray(requestData.requesting)
+          ? requestData.requesting.join(" + ")
+          : requestData.offering || "Sponsorship Support",
+        offerDetails: Array.isArray(requestData.theyOffer)
+          ? requestData.theyOffer.join(", ")
+          : Array.isArray(requestData.interestedIn)
+          ? requestData.interestedIn.join(", ")
+          : "Event Branding",
+        status: "pending",
+      };
 
-// Direction 2: Committee -> Sponsor requests (Committee approaching Brand opportunity)
-const initialSponsorRequests = brandIncomingRequests.map((req) => ({
-  id: req.id + 100, // Distinct ID range for mock sponsor requests
-  sponsorshipPostId: null,
-  opportunityId: req.id,
-  opportunityTitle: req.opportunityTitle || "Sponsorship Program",
-  eventName: req.eventName,
-  collegeName: req.collegeName || "VESIT",
-  collegeLogo: req.collegeLogo || "VE",
-  senderId: "demo_committee_1",
-  senderName: req.collegeName ? `${req.collegeName} Committee` : "CSI Student Chapter",
-  senderRole: "committee",
-  receiverId: "demo_sponsor_1",
-  receiverName: "NovaAI Technologies",
-  receiverRole: "sponsor",
-  brandName: "NovaAI Technologies",
-  brandLogo: "NA",
-  requesting: req.requesting || ["₹20,000 support", "AI Credits"],
-  theyOffer: req.theyOffer || ["Stage Branding", "Instagram Promotion"],
-  offering: req.requesting ? req.requesting.join(" + ") : "₹20,000 support",
-  interestedIn: req.theyOffer || ["Stage Branding", "Instagram Promotion"],
-  estimatedValue: "₹50,000",
-  message: `${req.collegeName || "College"} requested sponsorship partnership for ${req.opportunityTitle}`,
-  status: req.status === "New" ? "Pending" : req.status,
-  createdAt: req.receivedAt || "3 hours ago",
-  receivedAt: req.receivedAt || "3 hours ago",
-}));
+      const created = await api.createRequest(payload);
+      const mapped = mapRequestToUI(created);
+      return { ...mapped, ...requestData, id: mapped.id, _id: mapped._id, status: "Pending" };
+    } catch (err) {
+      return rejectWithValue(err.message);
+    }
+  }
+);
 
-const initialRequests = [...initialCommitteeRequests, ...initialSponsorRequests];
+export const updateRequestStatusThunk = createAsyncThunk(
+  "requests/updateRequestStatus",
+  async ({ requestId, status }, { rejectWithValue }) => {
+    try {
+      const backendStatus = status.toLowerCase() === "accepted" ? "accepted" : "declined";
+      const updated = await api.updateRequestStatus(requestId, backendStatus);
+      const mapped = mapRequestToUI(updated);
+      return { requestId, mapped, status: status === "accepted" || status === "Accepted" ? "Accepted" : "Declined" };
+    } catch (err) {
+      return rejectWithValue(err.message);
+    }
+  }
+);
 
 const requestSlice = createSlice({
   name: "requests",
   initialState: {
-    items: initialRequests,
+    items: [],
+    loading: false,
+    error: null,
   },
   reducers: {
     createPartnershipRequest: (state, action) => {
-      const {
-        sponsorshipPostId,
-        opportunityId,
-        senderId,
-      } = action.payload;
+      const { sponsorshipPostId, opportunityId, senderId } = action.payload;
 
-      // Prevent duplicate active request for exact same sender and target
       const existing = state.items.find((r) => {
         if (r.status !== "Pending" && r.status !== "New") return false;
-        if (sponsorshipPostId && r.sponsorshipPostId === sponsorshipPostId && r.senderId === senderId) return true;
-        if (opportunityId && r.opportunityId === opportunityId && r.senderId === senderId) return true;
+        if (sponsorshipPostId && String(r.sponsorshipPostId) === String(sponsorshipPostId) && r.senderId === senderId) return true;
+        if (opportunityId && String(r.opportunityId) === String(opportunityId) && r.senderId === senderId) return true;
         return false;
       });
 
-      if (existing) {
-        return;
-      }
+      if (existing) return;
 
       const requestingList = Array.isArray(action.payload.requesting)
         ? action.payload.requesting
@@ -103,7 +94,7 @@ const requestSlice = createSlice({
         : ["Event Branding"];
 
       const newReq = {
-        id: state.items.length > 0 ? Math.max(...state.items.map((r) => r.id)) + 1 : 1,
+        id: action.payload.id || (state.items.length > 0 ? Math.max(...state.items.map((r) => typeof r.id === 'number' ? r.id : 0)) + 1 : 1),
         sponsorshipPostId: action.payload.sponsorshipPostId || null,
         opportunityId: action.payload.opportunityId || null,
         opportunityTitle: action.payload.opportunityTitle || "Sponsorship Opportunity",
@@ -143,6 +134,45 @@ const requestSlice = createSlice({
         request.status = "Declined";
       }
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchRequestsThunk.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchRequestsThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        const uniqueItems = [];
+        const seenIds = new Set();
+        (action.payload || []).forEach((item) => {
+          const idStr = String(item._id || item.id);
+          if (!seenIds.has(idStr)) {
+            seenIds.add(idStr);
+            uniqueItems.push(item);
+          }
+        });
+        state.items = uniqueItems;
+      })
+      .addCase(fetchRequestsThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      .addCase(createPartnershipRequestThunk.fulfilled, (state, action) => {
+        const matchId = String(action.payload._id || action.payload.id);
+        const existingIdx = state.items.findIndex((r) => String(r._id || r.id) === matchId);
+        if (existingIdx >= 0) {
+          state.items[existingIdx] = action.payload;
+        } else {
+          state.items.unshift(action.payload);
+        }
+      })
+      .addCase(updateRequestStatusThunk.fulfilled, (state, action) => {
+        const { requestId, status } = action.payload;
+        const request = state.items.find((r) => String(r._id || r.id) === String(requestId));
+        if (request) {
+          request.status = status;
+        }
+      });
   },
 });
 

@@ -87,7 +87,7 @@ export default function TrustStatsSection() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-darkBrown border border-taupe/30 text-taupe text-xs font-bold uppercase tracking-wider">
             <TrendingUp className="w-3.5 h-3.5" />
-            Growing SponsorFlow Network
+            Growing Sponnect Network
           </div>
         </div>
 
