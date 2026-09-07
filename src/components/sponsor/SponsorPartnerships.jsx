@@ -12,8 +12,14 @@ export default function SponsorPartnerships() {
   const { user } = useAuth();
 
   useEffect(() => {
-    dispatch(fetchPartnershipsThunk());
-  }, [dispatch]);
+    if (user) {
+      const userHexId = String(user._id || user.id || "");
+      console.log("[SponsorPartnerships] Current user _id:", userHexId);
+      dispatch(fetchPartnershipsThunk({ sponsor: userHexId }));
+    } else {
+      dispatch(fetchPartnershipsThunk());
+    }
+  }, [dispatch, user]);
 
   const allPartnerships = useSelector((state) => state.partnerships.items) || [];
   const [selectedPartnershipForView, setSelectedPartnershipForView] = useState(null);
@@ -21,18 +27,13 @@ export default function SponsorPartnerships() {
   const rawPartnerships = allPartnerships.filter((p) => {
     if (!user) return false;
     const userHexId = String(user._id || user.id || "");
-    const userOrg = (user.organizationName || user.company || user.name || "").toLowerCase().trim();
 
     const sponsorHex = p.sponsor ? String(p.sponsor._id || p.sponsor) : null;
-    if (sponsorHex && userHexId && sponsorHex === userHexId) {
+    if (sponsorHex && userHexId && String(sponsorHex) === String(userHexId)) {
       return true;
     }
     const sponIdStr = p.sponsorId ? String(p.sponsorId) : null;
-    if (sponIdStr && userHexId && sponIdStr === userHexId) {
-      return true;
-    }
-    const brandNameStr = (p.brandName || p.sponsorName || "").toLowerCase().trim();
-    if (brandNameStr && userOrg && brandNameStr === userOrg) {
+    if (sponIdStr && userHexId && String(sponIdStr) === String(userHexId)) {
       return true;
     }
     return false;
@@ -41,6 +42,8 @@ export default function SponsorPartnerships() {
   const partnerships = Array.from(
     new Map(rawPartnerships.map((p) => [String(p._id || p.id), p])).values()
   );
+
+  console.log("[SponsorPartnerships] Matching partnerships count:", partnerships.length);
 
   return (
     <div className="space-y-6 font-sans-ui">

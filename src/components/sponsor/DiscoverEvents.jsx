@@ -119,7 +119,6 @@ export default function DiscoverEvents() {
     };
 
     dispatch(createPartnershipRequestThunk(requestPayload));
-    dispatch(createPartnershipRequest(requestPayload));
 
     dispatch(incrementBrandsInterested(post.id));
 

@@ -30,6 +30,8 @@ const partnershipSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.Mixed,
             ref: "Request",
             required: false,
+            unique: true,
+            sparse: true,
         },
 
         collegeName: {

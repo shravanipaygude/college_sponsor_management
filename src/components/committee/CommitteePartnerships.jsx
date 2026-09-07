@@ -12,8 +12,14 @@ export default function CommitteePartnerships() {
   const { user } = useAuth();
 
   useEffect(() => {
-    dispatch(fetchPartnershipsThunk());
-  }, [dispatch]);
+    if (user) {
+      const userHexId = String(user._id || user.id || "");
+      console.log("[CommitteePartnerships] Current user _id:", userHexId);
+      dispatch(fetchPartnershipsThunk({ committee: userHexId }));
+    } else {
+      dispatch(fetchPartnershipsThunk());
+    }
+  }, [dispatch, user]);
 
   const allPartnerships = useSelector((state) => state.partnerships.items) || [];
   const [selectedPartnershipForView, setSelectedPartnershipForView] = useState(null);
@@ -21,18 +27,13 @@ export default function CommitteePartnerships() {
   const rawPartnerships = allPartnerships.filter((p) => {
     if (!user) return false;
     const userHexId = String(user._id || user.id || "");
-    const userOrg = (user.organizationName || user.committee || user.name || "").toLowerCase().trim();
 
     const committeeHex = p.committee ? String(p.committee._id || p.committee) : null;
-    if (committeeHex && userHexId && committeeHex === userHexId) {
+    if (committeeHex && userHexId && String(committeeHex) === String(userHexId)) {
       return true;
     }
     const commIdStr = p.committeeId ? String(p.committeeId) : null;
-    if (commIdStr && userHexId && commIdStr === userHexId) {
-      return true;
-    }
-    const commName = (p.committeeName || "").toLowerCase().trim();
-    if (commName && userOrg && commName === userOrg) {
+    if (commIdStr && userHexId && String(commIdStr) === String(userHexId)) {
       return true;
     }
     return false;
@@ -41,6 +42,8 @@ export default function CommitteePartnerships() {
   const partnerships = Array.from(
     new Map(rawPartnerships.map((p) => [String(p._id || p.id), p])).values()
   );
+
+  console.log("[CommitteePartnerships] Matching partnerships count:", partnerships.length);
 
   return (
     <div className="space-y-6 font-sans-ui">

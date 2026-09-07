@@ -56,7 +56,6 @@ export default function SavedSponsors() {
     };
 
     dispatch(createPartnershipRequestThunk(requestPayload));
-    dispatch(createPartnershipRequest(requestPayload));
     dispatch(incrementOpportunityResponses(opp.id));
 
     dispatch(

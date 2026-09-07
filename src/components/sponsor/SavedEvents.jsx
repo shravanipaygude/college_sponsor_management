@@ -46,7 +46,6 @@ export default function SavedEvents() {
     };
 
     dispatch(createPartnershipRequestThunk(requestPayload));
-    dispatch(createPartnershipRequest(requestPayload));
     dispatch(incrementBrandsInterested(post.id));
 
     dispatch(

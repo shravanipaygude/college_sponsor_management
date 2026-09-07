@@ -4,7 +4,6 @@ import { Eye, Check, X, Clock } from "lucide-react";
 import StatusBadge from "../common/StatusBadge";
 import Modal from "../common/Modal";
 import { acceptRequest, declineRequest, updateRequestStatusThunk, fetchRequestsThunk } from "../../store/slices/requestSlice";
-import { createPartnership, createPartnershipThunk } from "../../store/slices/partnershipSlice";
 import { addNotification } from "../../store/slices/notificationSlice";
 
 import { useAuth } from "../../hooks/useAuth";
@@ -51,36 +50,6 @@ export default function CommitteeIncomingRequests() {
     try {
       await dispatch(updateRequestStatusThunk({ requestId: reqId, status: "accepted" })).unwrap();
       dispatch(acceptRequest(reqId));
-
-      const commHex = user?._id || user?.id;
-      const sponHex = req.sender ? (req.sender._id || req.sender).toString() : (req.senderId ? req.senderId.toString() : null);
-
-      const partnershipPayload = {
-        requestId: reqId,
-        sponsorshipPostId: req.sponsorshipPostId || req.eventId || req.event?._id || req.event || null,
-        eventId: req.sponsorshipPostId || req.eventId || req.event?._id || req.event || null,
-        opportunityId: req.opportunityId || req.opportunity?._id || req.opportunity || null,
-        committee: commHex,
-        committeeId: commHex,
-        committeeName: user?.organizationName || user?.committee || "College Committee",
-        sponsor: sponHex,
-        sponsorId: sponHex,
-        sponsorName: req.brandName || req.senderName || "Corporate Sponsor",
-        brandName: req.brandName || req.senderName || "Corporate Sponsor",
-        brandLogo: req.brandLogo || "NA",
-        collegeName: user?.collegeName || user?.college || req.collegeName || "VESIT",
-        collegeLogo: "VE",
-        eventName: req.eventName || req.event?.title || "College Event",
-        brandOffers: Array.isArray(req.offering) ? req.offering : [req.offering || "Sponsorship"],
-        brandProvides: Array.isArray(req.offering) ? req.offering : [req.offering || "Sponsorship"],
-        committeeOffers: req.interestedIn || ["Main Stage Branding", "Product Demo"],
-        committeeProvides: req.interestedIn || ["Main Stage Branding", "Product Demo"],
-        estimatedValue: req.estimatedValue || "₹50,000",
-        status: "Active",
-        facultyApprovalStatus: "approved",
-      };
-
-      await dispatch(createPartnershipThunk(partnershipPayload)).unwrap();
 
       dispatch(
         addNotification({
@@ -188,7 +157,8 @@ export default function CommitteeIncomingRequests() {
                   </button>
                   <button
                     onClick={() => handleAccept(req)}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-[var(--brand-primary)] text-white hover:opacity-90 transition-colors cursor-pointer"
+                    disabled={processingIds.has(String(req._id || req.id))}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-[var(--brand-primary)] text-white hover:opacity-90 transition-colors cursor-pointer disabled:opacity-50"
                   >
                     <Check className="w-3.5 h-3.5" />
                     Accept Interest

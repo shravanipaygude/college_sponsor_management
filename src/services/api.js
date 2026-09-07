@@ -423,8 +423,16 @@ export const api = {
     },
 
     // Partnerships
-    getPartnerships: async () => {
-        const res = await fetch(`${API_BASE_URL}/partnerships`);
+    getPartnerships: async (params = {}) => {
+        let url = `${API_BASE_URL}/partnerships`;
+        const query = new URLSearchParams();
+        if (params && params.committee) query.append("committee", params.committee);
+        if (params && params.sponsor) query.append("sponsor", params.sponsor);
+        if (params && params.facultyApprovalStatus) query.append("facultyApprovalStatus", params.facultyApprovalStatus);
+        const queryString = query.toString();
+        if (queryString) url += `?${queryString}`;
+
+        const res = await fetch(url);
         if (!res.ok) throw new Error("Failed to fetch partnerships");
         return await res.json();
     },

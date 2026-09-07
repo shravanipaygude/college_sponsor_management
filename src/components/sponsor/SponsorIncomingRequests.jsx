@@ -5,7 +5,6 @@ import StatusBadge from "../common/StatusBadge";
 import Modal from "../common/Modal";
 import { useAuth } from "../../hooks/useAuth";
 import { acceptRequest, declineRequest, updateRequestStatusThunk, fetchRequestsThunk } from "../../store/slices/requestSlice";
-import { createPartnership, createPartnershipThunk } from "../../store/slices/partnershipSlice";
 import { addNotification } from "../../store/slices/notificationSlice";
 
 export default function SponsorIncomingRequests() {
@@ -50,36 +49,6 @@ export default function SponsorIncomingRequests() {
     try {
       await dispatch(updateRequestStatusThunk({ requestId: reqId, status: "accepted" })).unwrap();
       dispatch(acceptRequest(reqId));
-
-      const commHex = req.sender ? (req.sender._id || req.sender).toString() : (req.senderId ? req.senderId.toString() : null);
-      const sponHex = user?._id || user?.id;
-
-      const partnershipPayload = {
-        requestId: reqId,
-        opportunityId: req.opportunityId || req.opportunity?._id || req.opportunity || null,
-        sponsorshipPostId: req.sponsorshipPostId || req.eventId || req.event?._id || req.event || null,
-        eventId: req.sponsorshipPostId || req.eventId || req.event?._id || req.event || null,
-        committee: commHex,
-        committeeId: commHex,
-        committeeName: req.senderName || `${req.collegeName || "VESIT"} Committee`,
-        sponsor: sponHex,
-        sponsorId: sponHex,
-        sponsorName: user?.organizationName || user?.company || user?.name || "Corporate Sponsor",
-        brandName: user?.organizationName || user?.company || user?.name || "Corporate Sponsor",
-        brandLogo: req.brandLogo || "NA",
-        collegeName: req.collegeName || "VESIT",
-        collegeLogo: req.collegeLogo || "VE",
-        eventName: req.eventName || req.opportunityTitle || "College Partnership",
-        brandOffers: Array.isArray(req.requesting) ? req.requesting : [req.requesting || "Sponsorship Support"],
-        brandProvides: Array.isArray(req.requesting) ? req.requesting : [req.requesting || "Sponsorship Support"],
-        committeeOffers: Array.isArray(req.theyOffer) ? req.theyOffer : [req.theyOffer || "Main Stage Branding"],
-        committeeProvides: Array.isArray(req.theyOffer) ? req.theyOffer : [req.theyOffer || "Main Stage Branding"],
-        estimatedValue: req.estimatedValue || "₹50,000",
-        status: "Active",
-        facultyApprovalStatus: "approved",
-      };
-
-      await dispatch(createPartnershipThunk(partnershipPayload)).unwrap();
 
       dispatch(
         addNotification({
@@ -182,7 +151,8 @@ export default function SponsorIncomingRequests() {
                   </button>
                   <button
                     onClick={() => handleInterested(req)}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-[var(--brand-primary)] text-white hover:opacity-90 transition-colors cursor-pointer"
+                    disabled={processingIds.has(String(req._id || req.id))}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-[var(--brand-primary)] text-white hover:opacity-90 transition-colors cursor-pointer disabled:opacity-50"
                   >
                     <Check className="w-3.5 h-3.5" />
                     Interested

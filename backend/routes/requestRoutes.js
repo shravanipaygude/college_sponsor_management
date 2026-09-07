@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const Request = require("../models/Request");
-
+const Partnership = require("../models/Partnership");
 const mongoose = require("mongoose");
 
 // Create a new request
@@ -82,7 +82,11 @@ router.patch("/:id/status", async (req, res) => {
             req.params.id,
             { status },
             { new: true }
-        );
+        )
+            .populate("sender")
+            .populate("receiver")
+            .populate("event")
+            .populate("opportunity");
 
         if (!request) {
             return res.status(404).json({
@@ -90,7 +94,73 @@ router.patch("/:id/status", async (req, res) => {
             });
         }
 
-        res.json(request);
+        let partnershipDoc = null;
+
+        if (status === "accepted") {
+            // Check if partnership already exists for this request
+            partnershipDoc = await Partnership.findOne({ request: request._id })
+                .populate("committee")
+                .populate("sponsor")
+                .populate("request")
+                .populate("event")
+                .populate("opportunity");
+
+            if (!partnershipDoc) {
+                // Derive committee and sponsor from request roles
+                let committee = null;
+                let sponsor = null;
+                if (request.receiverRole === "committee" || request.senderRole === "sponsor") {
+                    committee = request.receiver;
+                    sponsor = request.sender;
+                } else {
+                    committee = request.sender;
+                    sponsor = request.receiver;
+                }
+
+                const partnershipData = {
+                    request: request._id,
+                    committee: committee ? (committee._id || committee) : null,
+                    sponsor: sponsor ? (sponsor._id || sponsor) : null,
+                    event: request.event ? (request.event._id || request.event) : null,
+                    opportunity: request.opportunity ? (request.opportunity._id || request.opportunity) : null,
+                    agreementDetails: request.message || "Partnership Agreement",
+                    supportProvided: request.supportRequested || "Sponsorship Support",
+                    deliverables: request.offerDetails
+                        ? request.offerDetails.split(",").map((s) => s.trim()).filter(Boolean)
+                        : ["Main Stage Branding"],
+                    partnershipStatus: "active",
+                    facultyApprovalStatus: "approved",
+                };
+
+                try {
+                    const newPartnership = new Partnership(partnershipData);
+                    const saved = await newPartnership.save();
+                    partnershipDoc = await Partnership.findById(saved._id)
+                        .populate("committee")
+                        .populate("sponsor")
+                        .populate("request")
+                        .populate("event")
+                        .populate("opportunity");
+                } catch (createErr) {
+                    if (createErr.code === 11000) {
+                        // Duplicate key error — retrieve existing partnership
+                        partnershipDoc = await Partnership.findOne({ request: request._id })
+                            .populate("committee")
+                            .populate("sponsor")
+                            .populate("request")
+                            .populate("event")
+                            .populate("opportunity");
+                    } else {
+                        throw createErr;
+                    }
+                }
+            }
+        }
+
+        res.json({
+            request,
+            partnership: partnershipDoc,
+        });
     } catch (error) {
         res.status(500).json({
             message: "Failed to update request",

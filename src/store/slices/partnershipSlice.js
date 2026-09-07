@@ -4,9 +4,9 @@ import { api, mapPartnershipToUI } from "../../services/api.js";
 // Async thunks for Partnership API integration
 export const fetchPartnershipsThunk = createAsyncThunk(
   "partnerships/fetchPartnerships",
-  async (_, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue }) => {
     try {
-      const partnerships = await api.getPartnerships();
+      const partnerships = await api.getPartnerships(params);
       return partnerships.map(mapPartnershipToUI).filter(Boolean);
     } catch (err) {
       return rejectWithValue(err.message);

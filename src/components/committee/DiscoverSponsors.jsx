@@ -119,7 +119,6 @@ export default function DiscoverSponsors() {
     };
 
     dispatch(createPartnershipRequestThunk(requestPayload));
-    dispatch(createPartnershipRequest(requestPayload));
 
     dispatch(incrementOpportunityResponses(opp.id));
 

@@ -76,8 +76,24 @@ router.post("/", async (req, res) => {
             }
         }
 
-        const partnership = new Partnership(body);
-        const savedPartnership = await partnership.save();
+        let savedPartnership;
+        try {
+            const partnership = new Partnership(body);
+            savedPartnership = await partnership.save();
+        } catch (saveErr) {
+            if (saveErr.code === 11000 && requestId) {
+                const existingPartnership = await Partnership.findOne({ request: requestId })
+                    .populate("committee")
+                    .populate("sponsor")
+                    .populate("request")
+                    .populate("event")
+                    .populate("opportunity");
+                if (existingPartnership) {
+                    return res.status(200).json(existingPartnership);
+                }
+            }
+            throw saveErr;
+        }
 
         const populatedPartnership = await Partnership.findById(savedPartnership._id)
             .populate("committee")
@@ -95,12 +111,30 @@ router.post("/", async (req, res) => {
     }
 });
 
-// Get all partnerships (supports filtering by facultyApprovalStatus)
+// Get all partnerships (supports filtering by facultyApprovalStatus, committee, sponsor)
 router.get("/", async (req, res) => {
     try {
         const query = {};
         if (req.query.facultyApprovalStatus) {
             query.facultyApprovalStatus = req.query.facultyApprovalStatus;
+        }
+        if (req.query.committee) {
+            const commStr = String(req.query.committee).trim();
+            if (mongoose.Types.ObjectId.isValid(commStr)) {
+                const commObjId = new mongoose.Types.ObjectId(commStr);
+                query.$or = [{ committee: commObjId }, { committee: commStr }];
+            } else {
+                query.committee = commStr;
+            }
+        }
+        if (req.query.sponsor) {
+            const sponStr = String(req.query.sponsor).trim();
+            if (mongoose.Types.ObjectId.isValid(sponStr)) {
+                const sponObjId = new mongoose.Types.ObjectId(sponStr);
+                query.$or = [{ sponsor: sponObjId }, { sponsor: sponStr }];
+            } else {
+                query.sponsor = sponStr;
+            }
         }
 
         let partnerships = await Partnership.find(query)
