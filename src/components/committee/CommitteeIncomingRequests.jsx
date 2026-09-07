@@ -4,6 +4,7 @@ import { Eye, Check, X, Clock } from "lucide-react";
 import StatusBadge from "../common/StatusBadge";
 import Modal from "../common/Modal";
 import { acceptRequest, declineRequest, updateRequestStatusThunk, fetchRequestsThunk } from "../../store/slices/requestSlice";
+import { fetchPartnershipsThunk } from "../../store/slices/partnershipSlice";
 import { addNotification } from "../../store/slices/notificationSlice";
 
 import { useAuth } from "../../hooks/useAuth";
@@ -20,6 +21,9 @@ export default function CommitteeIncomingRequests() {
 
   const requests = allRequests.filter((r) => {
     if (!user) return false;
+
+    const reqStatus = (r.status || "pending").toLowerCase();
+    if (reqStatus !== "pending") return false;
 
     const userHexId = String(user._id || user.id || "");
     const userOrg = (user.organizationName || user.committee || user.name || "").toLowerCase().trim();
@@ -50,7 +54,8 @@ export default function CommitteeIncomingRequests() {
     try {
       await dispatch(updateRequestStatusThunk({ requestId: reqId, status: "accepted" })).unwrap();
       dispatch(acceptRequest(reqId));
-
+      dispatch(fetchRequestsThunk());
+      dispatch(fetchPartnershipsThunk());
       dispatch(
         addNotification({
           role: "Committee Head",

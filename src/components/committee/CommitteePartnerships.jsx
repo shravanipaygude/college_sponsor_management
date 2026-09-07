@@ -7,43 +7,46 @@ import Modal from "../common/Modal";
 import { useAuth } from "../../hooks/useAuth";
 import { fetchPartnershipsThunk } from "../../store/slices/partnershipSlice";
 
+const getId = (value) => {
+  if (!value) return null;
+  if (typeof value === "string") return value;
+  return value._id || value.id || null;
+};
+
 export default function CommitteePartnerships() {
   const dispatch = useDispatch();
-  const { user } = useAuth();
+  const { user: currentUser } = useAuth();
 
   useEffect(() => {
-    if (user) {
-      const userHexId = String(user._id || user.id || "");
-      console.log("[CommitteePartnerships] Current user _id:", userHexId);
-      dispatch(fetchPartnershipsThunk({ committee: userHexId }));
-    } else {
-      dispatch(fetchPartnershipsThunk());
-    }
-  }, [dispatch, user]);
+    dispatch(fetchPartnershipsThunk());
+  }, [dispatch]);
 
   const allPartnerships = useSelector((state) => state.partnerships.items) || [];
   const [selectedPartnershipForView, setSelectedPartnershipForView] = useState(null);
 
-  const rawPartnerships = allPartnerships.filter((p) => {
-    if (!user) return false;
-    const userHexId = String(user._id || user.id || "");
+  const committeeId = String(currentUser?._id || currentUser?.id || "");
 
-    const committeeHex = p.committee ? String(p.committee._id || p.committee) : null;
-    if (committeeHex && userHexId && String(committeeHex) === String(userHexId)) {
-      return true;
-    }
-    const commIdStr = p.committeeId ? String(p.committeeId) : null;
-    if (commIdStr && userHexId && String(commIdStr) === String(userHexId)) {
-      return true;
-    }
-    return false;
+  const myPartnerships = (allPartnerships || []).filter((p) => {
+    const pCommittee =
+      typeof p.committee === "string"
+        ? p.committee
+        : p.committee?._id || p.committee?.id || p.committeeId;
+
+    const pStatus = p.partnershipStatus || p.status || "active";
+
+    return (
+      String(pCommittee) === committeeId &&
+      (pStatus.toLowerCase() === "active" || pStatus === "Active")
+    );
   });
 
   const partnerships = Array.from(
-    new Map(rawPartnerships.map((p) => [String(p._id || p.id), p])).values()
+    new Map(myPartnerships.map((p) => [String(p._id || p.id), p])).values()
   );
 
-  console.log("[CommitteePartnerships] Matching partnerships count:", partnerships.length);
+  console.log("CURRENT COMMITTEE ID", committeeId);
+  console.log("PARTNERSHIPS FROM API", allPartnerships);
+  console.log("FILTERED COMMITTEE PARTNERSHIPS", partnerships);
 
   return (
     <div className="space-y-6 font-sans-ui">

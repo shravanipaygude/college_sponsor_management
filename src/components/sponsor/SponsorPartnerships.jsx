@@ -7,43 +7,46 @@ import Modal from "../common/Modal";
 import { useAuth } from "../../hooks/useAuth";
 import { fetchPartnershipsThunk } from "../../store/slices/partnershipSlice";
 
+const getId = (value) => {
+  if (!value) return null;
+  if (typeof value === "string") return value;
+  return value._id || value.id || null;
+};
+
 export default function SponsorPartnerships() {
   const dispatch = useDispatch();
-  const { user } = useAuth();
+  const { user: currentUser } = useAuth();
 
   useEffect(() => {
-    if (user) {
-      const userHexId = String(user._id || user.id || "");
-      console.log("[SponsorPartnerships] Current user _id:", userHexId);
-      dispatch(fetchPartnershipsThunk({ sponsor: userHexId }));
-    } else {
-      dispatch(fetchPartnershipsThunk());
-    }
-  }, [dispatch, user]);
+    dispatch(fetchPartnershipsThunk());
+  }, [dispatch]);
 
   const allPartnerships = useSelector((state) => state.partnerships.items) || [];
   const [selectedPartnershipForView, setSelectedPartnershipForView] = useState(null);
 
-  const rawPartnerships = allPartnerships.filter((p) => {
-    if (!user) return false;
-    const userHexId = String(user._id || user.id || "");
+  const sponsorId = String(currentUser?._id || currentUser?.id || "");
 
-    const sponsorHex = p.sponsor ? String(p.sponsor._id || p.sponsor) : null;
-    if (sponsorHex && userHexId && String(sponsorHex) === String(userHexId)) {
-      return true;
-    }
-    const sponIdStr = p.sponsorId ? String(p.sponsorId) : null;
-    if (sponIdStr && userHexId && String(sponIdStr) === String(userHexId)) {
-      return true;
-    }
-    return false;
+  const myPartnerships = (allPartnerships || []).filter((p) => {
+    const pSponsor =
+      typeof p.sponsor === "string"
+        ? p.sponsor
+        : p.sponsor?._id || p.sponsor?.id || p.sponsorId;
+
+    const pStatus = p.partnershipStatus || p.status || "active";
+
+    return (
+      String(pSponsor) === sponsorId &&
+      (pStatus.toLowerCase() === "active" || pStatus === "Active")
+    );
   });
 
   const partnerships = Array.from(
-    new Map(rawPartnerships.map((p) => [String(p._id || p.id), p])).values()
+    new Map(myPartnerships.map((p) => [String(p._id || p.id), p])).values()
   );
 
-  console.log("[SponsorPartnerships] Matching partnerships count:", partnerships.length);
+  console.log("CURRENT SPONSOR ID", sponsorId);
+  console.log("PARTNERSHIPS FROM API", allPartnerships);
+  console.log("FILTERED PARTNERSHIPS", partnerships);
 
   return (
     <div className="space-y-6 font-sans-ui">

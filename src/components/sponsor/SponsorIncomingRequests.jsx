@@ -5,6 +5,7 @@ import StatusBadge from "../common/StatusBadge";
 import Modal from "../common/Modal";
 import { useAuth } from "../../hooks/useAuth";
 import { acceptRequest, declineRequest, updateRequestStatusThunk, fetchRequestsThunk } from "../../store/slices/requestSlice";
+import { fetchPartnershipsThunk } from "../../store/slices/partnershipSlice";
 import { addNotification } from "../../store/slices/notificationSlice";
 
 export default function SponsorIncomingRequests() {
@@ -19,6 +20,9 @@ export default function SponsorIncomingRequests() {
 
   const requests = allRequests.filter((r) => {
     if (!user) return false;
+
+    const reqStatus = (r.status || "pending").toLowerCase();
+    if (reqStatus !== "pending") return false;
 
     const userHexId = String(user._id || user.id || "");
     const userOrg = (user.organizationName || user.company || user.name || "").toLowerCase().trim();
@@ -49,6 +53,8 @@ export default function SponsorIncomingRequests() {
     try {
       await dispatch(updateRequestStatusThunk({ requestId: reqId, status: "accepted" })).unwrap();
       dispatch(acceptRequest(reqId));
+      dispatch(fetchRequestsThunk());
+      dispatch(fetchPartnershipsThunk());
 
       dispatch(
         addNotification({

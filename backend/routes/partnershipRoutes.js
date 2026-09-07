@@ -52,12 +52,16 @@ router.post("/", async (req, res) => {
                 if (!body.opportunity && requestDoc.opportunity) body.opportunity = requestDoc.opportunity;
 
                 if (!body.committee || !body.sponsor) {
-                    if (requestDoc.receiverRole === "committee" || requestDoc.senderRole === "sponsor") {
-                        body.committee = body.committee || requestDoc.receiver;
-                        body.sponsor = body.sponsor || requestDoc.sender;
+                    const rawSender = requestDoc.sender?._id || requestDoc.sender;
+                    const rawReceiver = requestDoc.receiver?._id || requestDoc.receiver;
+                    const rawEvent = requestDoc.event?._id || requestDoc.event;
+
+                    if (rawEvent || requestDoc.senderRole === "sponsor" || requestDoc.receiverRole === "committee") {
+                        body.committee = body.committee || rawReceiver;
+                        body.sponsor = body.sponsor || rawSender;
                     } else {
-                        body.committee = body.committee || requestDoc.sender;
-                        body.sponsor = body.sponsor || requestDoc.receiver;
+                        body.committee = body.committee || rawSender;
+                        body.sponsor = body.sponsor || rawReceiver;
                     }
                 }
             }
@@ -118,23 +122,30 @@ router.get("/", async (req, res) => {
         if (req.query.facultyApprovalStatus) {
             query.facultyApprovalStatus = req.query.facultyApprovalStatus;
         }
+
+        const conditions = [];
+
         if (req.query.committee) {
             const commStr = String(req.query.committee).trim();
             if (mongoose.Types.ObjectId.isValid(commStr)) {
                 const commObjId = new mongoose.Types.ObjectId(commStr);
-                query.$or = [{ committee: commObjId }, { committee: commStr }];
+                conditions.push({ $or: [{ committee: commObjId }, { committee: commStr }] });
             } else {
-                query.committee = commStr;
+                conditions.push({ committee: commStr });
             }
         }
         if (req.query.sponsor) {
             const sponStr = String(req.query.sponsor).trim();
             if (mongoose.Types.ObjectId.isValid(sponStr)) {
                 const sponObjId = new mongoose.Types.ObjectId(sponStr);
-                query.$or = [{ sponsor: sponObjId }, { sponsor: sponStr }];
+                conditions.push({ $or: [{ sponsor: sponObjId }, { sponsor: sponStr }] });
             } else {
-                query.sponsor = sponStr;
+                conditions.push({ sponsor: sponStr });
             }
+        }
+
+        if (conditions.length > 0) {
+            query.$and = conditions;
         }
 
         let partnerships = await Partnership.find(query)

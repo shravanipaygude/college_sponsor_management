@@ -78,25 +78,53 @@ router.patch("/:id/status", async (req, res) => {
             });
         }
 
-        const request = await Request.findByIdAndUpdate(
-            req.params.id,
-            { status },
-            { new: true }
-        )
-            .populate("sender")
-            .populate("receiver")
-            .populate("event")
-            .populate("opportunity");
+        // Fetch unpopulated request first to preserve raw sender/receiver IDs
+        const unpopulatedReq = await Request.findById(req.params.id);
 
-        if (!request) {
+        if (!unpopulatedReq) {
             return res.status(404).json({
                 message: "Request not found",
             });
         }
 
+        unpopulatedReq.status = status;
+        await unpopulatedReq.save();
+
+        const request = await Request.findById(req.params.id)
+            .populate("sender")
+            .populate("receiver")
+            .populate("event")
+            .populate("opportunity");
+
         let partnershipDoc = null;
 
         if (status === "accepted") {
+            // Extract raw unpopulated sender and receiver IDs to ensure non-null assignment
+            const rawSender = unpopulatedReq.sender;
+            const rawReceiver = unpopulatedReq.receiver;
+            const rawEvent = unpopulatedReq.event;
+            const rawOpp = unpopulatedReq.opportunity;
+
+            // CASE A: Sponsor expressed interest in Committee Event (request.event present or receiver is committee / sender is sponsor)
+            // CASE B: Committee approached Sponsor Opportunity (request.opportunity present or sender is committee / receiver is sponsor)
+            let committeeId = null;
+            let sponsorId = null;
+
+            if (rawEvent || unpopulatedReq.senderRole === "sponsor" || unpopulatedReq.receiverRole === "committee") {
+                committeeId = rawReceiver;
+                sponsorId = rawSender;
+            } else {
+                committeeId = rawSender;
+                sponsorId = rawReceiver;
+            }
+
+            if (committeeId && typeof committeeId === "string" && mongoose.Types.ObjectId.isValid(committeeId)) {
+                committeeId = new mongoose.Types.ObjectId(committeeId);
+            }
+            if (sponsorId && typeof sponsorId === "string" && mongoose.Types.ObjectId.isValid(sponsorId)) {
+                sponsorId = new mongoose.Types.ObjectId(sponsorId);
+            }
+
             // Check if partnership already exists for this request
             partnershipDoc = await Partnership.findOne({ request: request._id })
                 .populate("committee")
@@ -106,23 +134,12 @@ router.patch("/:id/status", async (req, res) => {
                 .populate("opportunity");
 
             if (!partnershipDoc) {
-                // Derive committee and sponsor from request roles
-                let committee = null;
-                let sponsor = null;
-                if (request.receiverRole === "committee" || request.senderRole === "sponsor") {
-                    committee = request.receiver;
-                    sponsor = request.sender;
-                } else {
-                    committee = request.sender;
-                    sponsor = request.receiver;
-                }
-
                 const partnershipData = {
                     request: request._id,
-                    committee: committee ? (committee._id || committee) : null,
-                    sponsor: sponsor ? (sponsor._id || sponsor) : null,
-                    event: request.event ? (request.event._id || request.event) : null,
-                    opportunity: request.opportunity ? (request.opportunity._id || request.opportunity) : null,
+                    committee: committeeId,
+                    sponsor: sponsorId,
+                    event: rawEvent || null,
+                    opportunity: rawOpp || null,
                     agreementDetails: request.message || "Partnership Agreement",
                     supportProvided: request.supportRequested || "Sponsorship Support",
                     deliverables: request.offerDetails
@@ -143,7 +160,6 @@ router.patch("/:id/status", async (req, res) => {
                         .populate("opportunity");
                 } catch (createErr) {
                     if (createErr.code === 11000) {
-                        // Duplicate key error — retrieve existing partnership
                         partnershipDoc = await Partnership.findOne({ request: request._id })
                             .populate("committee")
                             .populate("sponsor")
@@ -154,6 +170,18 @@ router.patch("/:id/status", async (req, res) => {
                         throw createErr;
                     }
                 }
+            } else if (!partnershipDoc.committee || !partnershipDoc.sponsor) {
+                // Heal existing partnership if committee or sponsor was saved as null
+                await Partnership.updateOne(
+                    { _id: partnershipDoc._id },
+                    { $set: { committee: committeeId, sponsor: sponsorId } }
+                );
+                partnershipDoc = await Partnership.findById(partnershipDoc._id)
+                    .populate("committee")
+                    .populate("sponsor")
+                    .populate("request")
+                    .populate("event")
+                    .populate("opportunity");
             }
         }
 
