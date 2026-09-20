@@ -2,56 +2,125 @@ const express = require("express");
 const router = express.Router();
 const Request = require("../models/Request");
 const Partnership = require("../models/Partnership");
+const Event = require("../models/Event");
+const Opportunity = require("../models/Opportunity");
 const mongoose = require("mongoose");
+const { authenticateToken } = require("../middleware/auth");
 
-// Create a new request
-// Sponsor -> Committee (Express Interest)
-// Committee -> Sponsor (Approach Sponsor)
-router.post("/", async (req, res) => {
+// Create a new request — Authenticated user (Sponsor -> Committee Event OR Committee -> Sponsor Opportunity)
+router.post("/", authenticateToken, async (req, res) => {
     try {
-        const body = { ...req.body };
-        if (body.sender && typeof body.sender === "string" && mongoose.Types.ObjectId.isValid(body.sender)) {
-            body.sender = new mongoose.Types.ObjectId(body.sender);
-        }
-        if (body.receiver && typeof body.receiver === "string" && mongoose.Types.ObjectId.isValid(body.receiver)) {
-            body.receiver = new mongoose.Types.ObjectId(body.receiver);
-        }
-        if (body.event && typeof body.event === "string" && mongoose.Types.ObjectId.isValid(body.event)) {
-            body.event = new mongoose.Types.ObjectId(body.event);
-        }
-        if (body.opportunity && typeof body.opportunity === "string" && mongoose.Types.ObjectId.isValid(body.opportunity)) {
-            body.opportunity = new mongoose.Types.ObjectId(body.opportunity);
-        }
+        const { eventId, opportunityId, message, supportRequested, offerDetails } = req.body;
+        const senderId = req.user._id;
+        const senderRole = req.user.role;
 
-        const duplicateQuery = { status: "pending" };
-        if (body.sender) duplicateQuery.sender = body.sender;
-        if (body.receiver) duplicateQuery.receiver = body.receiver;
-        if (body.event) duplicateQuery.event = body.event;
-        if (body.opportunity) duplicateQuery.opportunity = body.opportunity;
+        let targetReceiver = null;
+        let targetReceiverRole = null;
+        let targetEventId = null;
+        let targetOppId = null;
 
-        if (body.sender && body.receiver && (body.event || body.opportunity)) {
-            const existing = await Request.findOne(duplicateQuery);
-            if (existing) {
-                return res.status(200).json(existing);
+        // CASE A: Sponsor expresses interest in a Committee Event
+        if (senderRole === "sponsor" && (eventId || req.body.event)) {
+            const eId = eventId || req.body.event;
+            if (!mongoose.Types.ObjectId.isValid(eId)) {
+                return res.status(400).json({ success: false, message: "Invalid event ID" });
+            }
+            const eventDoc = await Event.findById(eId);
+            if (!eventDoc) {
+                return res.status(404).json({ success: false, message: "Target event not found" });
+            }
+            targetEventId = eventDoc._id;
+            targetReceiver = eventDoc.createdBy;
+            targetReceiverRole = "committee";
+        }
+        // CASE B: Committee approaches a Sponsor Opportunity
+        else if (senderRole === "committee" && (opportunityId || req.body.opportunity)) {
+            const oId = opportunityId || req.body.opportunity;
+            if (!mongoose.Types.ObjectId.isValid(oId)) {
+                return res.status(400).json({ success: false, message: "Invalid opportunity ID" });
+            }
+            const oppDoc = await Opportunity.findById(oId);
+            if (!oppDoc) {
+                return res.status(404).json({ success: false, message: "Target opportunity not found" });
+            }
+            targetOppId = oppDoc._id;
+            targetReceiver = oppDoc.createdBy;
+            targetReceiverRole = "sponsor";
+        } else {
+            // Fallback for direct IDs if supplied
+            if (req.body.receiver && mongoose.Types.ObjectId.isValid(req.body.receiver)) {
+                targetReceiver = req.body.receiver;
+                targetReceiverRole = req.body.receiverRole || (senderRole === "sponsor" ? "committee" : "sponsor");
+            }
+            if (req.body.event && mongoose.Types.ObjectId.isValid(req.body.event)) {
+                targetEventId = req.body.event;
+            }
+            if (req.body.opportunity && mongoose.Types.ObjectId.isValid(req.body.opportunity)) {
+                targetOppId = req.body.opportunity;
             }
         }
 
-        const request = new Request(body);
-        const savedRequest = await request.save();
+        if (!targetReceiver) {
+            return res.status(400).json({
+                success: false,
+                message: "Target recipient user could not be resolved.",
+            });
+        }
 
-        res.status(201).json(savedRequest);
+        // Prevent duplicate pending request
+        const duplicateQuery = {
+            sender: senderId,
+            receiver: targetReceiver,
+            status: "pending",
+        };
+        if (targetEventId) duplicateQuery.event = targetEventId;
+        if (targetOppId) duplicateQuery.opportunity = targetOppId;
+
+        const existing = await Request.findOne(duplicateQuery);
+        if (existing) {
+            return res.status(200).json(existing);
+        }
+
+        const newRequest = new Request({
+            sender: senderId,
+            senderRole: senderRole,
+            receiver: targetReceiver,
+            receiverRole: targetReceiverRole,
+            event: targetEventId,
+            opportunity: targetOppId,
+            message: message || "Partnership request",
+            supportRequested: supportRequested || "",
+            offerDetails: offerDetails || "",
+            status: "pending",
+        });
+
+        const savedRequest = await newRequest.save();
+        const populatedRequest = await Request.findById(savedRequest._id)
+            .populate("sender")
+            .populate("receiver")
+            .populate("event")
+            .populate("opportunity");
+
+        res.status(201).json(populatedRequest);
     } catch (error) {
+        console.error("Error creating request:", error);
         res.status(500).json({
+            success: false,
             message: "Failed to create request",
             error: error.message,
         });
     }
 });
 
-// Get all requests
-router.get("/", async (req, res) => {
+// Get requests — Authenticated user's incoming or outgoing requests
+router.get("/", authenticateToken, async (req, res) => {
     try {
-        const requests = await Request.find()
+        const userId = req.user._id;
+
+        // Query requests where current user is either sender or receiver
+        const requests = await Request.find({
+            $or: [{ sender: userId }, { receiver: userId }],
+        })
             .populate("sender")
             .populate("receiver")
             .populate("event")
@@ -61,29 +130,44 @@ router.get("/", async (req, res) => {
         res.json(requests);
     } catch (error) {
         res.status(500).json({
+            success: false,
             message: "Failed to fetch requests",
             error: error.message,
         });
     }
 });
 
-// Update request status - Accept / Decline
-router.patch("/:id/status", async (req, res) => {
+// Update request status — Accept / Decline (Target receiver only)
+router.patch("/:id/status", authenticateToken, async (req, res) => {
     try {
         const { status } = req.body;
 
         if (!["accepted", "declined"].includes(status)) {
             return res.status(400).json({
-                message: "Status must be accepted or declined",
+                success: false,
+                message: "Status must be 'accepted' or 'declined'.",
             });
         }
 
-        // Fetch unpopulated request first to preserve raw sender/receiver IDs
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({ success: false, message: "Invalid request ID" });
+        }
+
         const unpopulatedReq = await Request.findById(req.params.id);
 
         if (!unpopulatedReq) {
             return res.status(404).json({
+                success: false,
                 message: "Request not found",
+            });
+        }
+
+        // Target receiver ownership check
+        const receiverId = unpopulatedReq.receiver ? (unpopulatedReq.receiver._id || unpopulatedReq.receiver).toString() : null;
+        if (receiverId !== req.user._id.toString()) {
+            return res.status(403).json({
+                success: false,
+                message: "Forbidden. Only the designated request recipient can accept or decline this request.",
             });
         }
 
@@ -99,14 +183,11 @@ router.patch("/:id/status", async (req, res) => {
         let partnershipDoc = null;
 
         if (status === "accepted") {
-            // Extract raw unpopulated sender and receiver IDs to ensure non-null assignment
             const rawSender = unpopulatedReq.sender;
             const rawReceiver = unpopulatedReq.receiver;
             const rawEvent = unpopulatedReq.event;
             const rawOpp = unpopulatedReq.opportunity;
 
-            // CASE A: Sponsor expressed interest in Committee Event (request.event present or receiver is committee / sender is sponsor)
-            // CASE B: Committee approached Sponsor Opportunity (request.opportunity present or sender is committee / receiver is sponsor)
             let committeeId = null;
             let sponsorId = null;
 
@@ -125,7 +206,7 @@ router.patch("/:id/status", async (req, res) => {
                 sponsorId = new mongoose.Types.ObjectId(sponsorId);
             }
 
-            // Check if partnership already exists for this request
+            // Reuse or create EXACTLY ONE Partnership document for this request
             partnershipDoc = await Partnership.findOne({ request: request._id })
                 .populate("committee")
                 .populate("sponsor")
@@ -170,18 +251,6 @@ router.patch("/:id/status", async (req, res) => {
                         throw createErr;
                     }
                 }
-            } else if (!partnershipDoc.committee || !partnershipDoc.sponsor) {
-                // Heal existing partnership if committee or sponsor was saved as null
-                await Partnership.updateOne(
-                    { _id: partnershipDoc._id },
-                    { $set: { committee: committeeId, sponsor: sponsorId } }
-                );
-                partnershipDoc = await Partnership.findById(partnershipDoc._id)
-                    .populate("committee")
-                    .populate("sponsor")
-                    .populate("request")
-                    .populate("event")
-                    .populate("opportunity");
             }
         }
 
@@ -190,8 +259,10 @@ router.patch("/:id/status", async (req, res) => {
             partnership: partnershipDoc,
         });
     } catch (error) {
+        console.error("Error updating request status:", error);
         res.status(500).json({
-            message: "Failed to update request",
+            success: false,
+            message: "Failed to update request status",
             error: error.message,
         });
     }

@@ -119,11 +119,13 @@ export default function App() {
   const { user, role, isAuthenticated, loading, logout } = useAuth();
 
   useEffect(() => {
-    dispatch(fetchEventsThunk());
-    dispatch(fetchOpportunitiesThunk());
-    dispatch(fetchRequestsThunk());
-    dispatch(fetchPartnershipsThunk());
-  }, [dispatch]);
+    if (isAuthenticated) {
+      dispatch(fetchEventsThunk());
+      dispatch(fetchOpportunitiesThunk());
+      dispatch(fetchRequestsThunk());
+      dispatch(fetchPartnershipsThunk());
+    }
+  }, [dispatch, isAuthenticated, user?._id]);
 
   const [activeTab, setActiveTab] = useState("dashboard");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);

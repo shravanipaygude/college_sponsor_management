@@ -1,5 +1,20 @@
 const API_BASE_URL = "http://localhost:5000/api";
 
+// Helper to retrieve JWT token from storage
+export const getAuthToken = () => {
+    return localStorage.getItem("sf_jwt_token") || sessionStorage.getItem("sf_jwt_token") || null;
+};
+
+// Helper to construct request headers with Authorization Bearer token
+export const getAuthHeaders = () => {
+    const headers = { "Content-Type": "application/json" };
+    const token = getAuthToken();
+    if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+    }
+    return headers;
+};
+
 // Utility mapper helpers
 export const mapEventToPost = (eventDoc) => {
     if (!eventDoc) return null;
@@ -44,7 +59,6 @@ export const mapEventToPost = (eventDoc) => {
 
 export const mapPostToEventPayload = (postData) => {
     return {
-        createdBy: postData.createdBy || null,
         title: postData.title || postData.eventName || "New College Event",
         description:
             postData.description ||
@@ -99,7 +113,6 @@ export const mapOpportunityToUI = (oppDoc) => {
 export const mapOpportunityPayload = (oppData) => {
     const compName = oppData.companyName || oppData.brandName || oppData.organizationName || "Corporate Sponsor";
     return {
-        createdBy: oppData.createdBy ? String(oppData.createdBy) : null,
         title: oppData.title || `${compName} Sponsorship Program`,
         companyName: compName,
         description: oppData.about || oppData.description || "Sponsorship opportunity",
@@ -265,13 +278,44 @@ export const mapPartnershipToUI = (partDoc) => {
 
 // API Methods
 export const api = {
+    // Auth Endpoints
+    loginUser: async (email, password) => {
+        const res = await fetch(`${API_BASE_URL}/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "Invalid credentials");
+        return data;
+    },
+    registerUser: async (userData) => {
+        const res = await fetch(`${API_BASE_URL}/auth/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(userData),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "Registration failed");
+        return data;
+    },
+    getCurrentUser: async () => {
+        const res = await fetch(`${API_BASE_URL}/auth/me`, {
+            headers: getAuthHeaders(),
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data.user;
+    },
+
     // Events
     getEvents: async () => {
         try {
-            const res = await fetch(`${API_BASE_URL}/events`);
+            const res = await fetch(`${API_BASE_URL}/events`, {
+                headers: getAuthHeaders(),
+            });
             if (!res.ok) throw new Error("Failed to fetch events");
             const data = await res.json();
-            console.log("GET /api/events count:", data.length);
             return data;
         } catch (err) {
             if (err.message === "Failed to fetch" || err.message.includes("NetworkError")) {
@@ -282,27 +326,23 @@ export const api = {
         }
     },
     createEvent: async (eventPayload) => {
-        console.log("Submitting event payload:", eventPayload);
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
         try {
             const res = await fetch(`${API_BASE_URL}/events`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: getAuthHeaders(),
                 body: JSON.stringify(eventPayload),
                 signal: controller.signal,
             });
             clearTimeout(timeoutId);
-            console.log("POST /api/events response status:", res.status);
 
             if (!res.ok) {
                 const errorData = await res.json().catch(() => ({}));
                 throw new Error(errorData.message || errorData.error || `Server responded with status ${res.status}`);
             }
-            const savedDoc = await res.json();
-            console.log("POST /api/events returned document:", savedDoc);
-            return savedDoc;
+            return await res.json();
         } catch (err) {
             clearTimeout(timeoutId);
             if (err.name === "AbortError") {
@@ -317,27 +357,35 @@ export const api = {
     updateEvent: async (id, eventPayload) => {
         const res = await fetch(`${API_BASE_URL}/events/${id}`, {
             method: "PATCH",
-            headers: { "Content-Type": "application/json" },
+            headers: getAuthHeaders(),
             body: JSON.stringify(eventPayload),
         });
-        if (!res.ok) throw new Error("Failed to update event");
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.message || "Failed to update event");
+        }
         return await res.json();
     },
     deleteEvent: async (id) => {
         const res = await fetch(`${API_BASE_URL}/events/${id}`, {
             method: "DELETE",
+            headers: getAuthHeaders(),
         });
-        if (!res.ok) throw new Error("Failed to delete event");
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.message || "Failed to delete event");
+        }
         return await res.json();
     },
 
     // Opportunities
     getOpportunities: async () => {
         try {
-            const res = await fetch(`${API_BASE_URL}/opportunities`);
+            const res = await fetch(`${API_BASE_URL}/opportunities`, {
+                headers: getAuthHeaders(),
+            });
             if (!res.ok) throw new Error("Failed to fetch opportunities");
             const data = await res.json();
-            console.log("GET /api/opportunities count:", data.length);
             return data;
         } catch (err) {
             if (err.message === "Failed to fetch" || err.message.includes("NetworkError")) {
@@ -348,27 +396,23 @@ export const api = {
         }
     },
     createOpportunity: async (opportunityPayload) => {
-        console.log("Submitting opportunity payload:", opportunityPayload);
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
         try {
             const res = await fetch(`${API_BASE_URL}/opportunities`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: getAuthHeaders(),
                 body: JSON.stringify(opportunityPayload),
                 signal: controller.signal,
             });
             clearTimeout(timeoutId);
-            console.log("POST /api/opportunities response status:", res.status);
 
             if (!res.ok) {
                 const errorData = await res.json().catch(() => ({}));
                 throw new Error(errorData.message || errorData.error || `Server responded with status ${res.status}`);
             }
-            const savedDoc = await res.json();
-            console.log("POST /api/opportunities returned document:", savedDoc);
-            return savedDoc;
+            return await res.json();
         } catch (err) {
             clearTimeout(timeoutId);
             if (err.name === "AbortError") {
@@ -383,75 +427,66 @@ export const api = {
     updateOpportunity: async (id, opportunityPayload) => {
         const res = await fetch(`${API_BASE_URL}/opportunities/${id}`, {
             method: "PATCH",
-            headers: { "Content-Type": "application/json" },
+            headers: getAuthHeaders(),
             body: JSON.stringify(opportunityPayload),
         });
-        if (!res.ok) throw new Error("Failed to update opportunity");
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.message || "Failed to update opportunity");
+        }
         return await res.json();
     },
     deleteOpportunity: async (id) => {
         const res = await fetch(`${API_BASE_URL}/opportunities/${id}`, {
             method: "DELETE",
+            headers: getAuthHeaders(),
         });
-        if (!res.ok) throw new Error("Failed to delete opportunity");
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.message || "Failed to delete opportunity");
+        }
         return await res.json();
     },
 
     // Requests
     getRequests: async () => {
-        const res = await fetch(`${API_BASE_URL}/requests`);
-        if (!res.ok) throw new Error("Failed to fetch requests");
+        const res = await fetch(`${API_BASE_URL}/requests`, {
+            headers: getAuthHeaders(),
+        });
+        if (!res.ok) return [];
         return await res.json();
     },
     createRequest: async (requestPayload) => {
         const res = await fetch(`${API_BASE_URL}/requests`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: getAuthHeaders(),
             body: JSON.stringify(requestPayload),
         });
-        if (!res.ok) throw new Error("Failed to create request");
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.message || "Failed to create request");
+        }
         return await res.json();
     },
     updateRequestStatus: async (requestId, status) => {
         const res = await fetch(`${API_BASE_URL}/requests/${requestId}/status`, {
             method: "PATCH",
-            headers: { "Content-Type": "application/json" },
+            headers: getAuthHeaders(),
             body: JSON.stringify({ status }),
         });
-        if (!res.ok) throw new Error("Failed to update request status");
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.message || "Failed to update request status");
+        }
         return await res.json();
     },
 
     // Partnerships
-    getPartnerships: async (params = {}) => {
-        let url = `${API_BASE_URL}/partnerships`;
-        const query = new URLSearchParams();
-        if (params && params.committee) query.append("committee", params.committee);
-        if (params && params.sponsor) query.append("sponsor", params.sponsor);
-        if (params && params.facultyApprovalStatus) query.append("facultyApprovalStatus", params.facultyApprovalStatus);
-        const queryString = query.toString();
-        if (queryString) url += `?${queryString}`;
-
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("Failed to fetch partnerships");
-        return await res.json();
-    },
-    createPartnership: async (partnershipPayload) => {
+    getPartnerships: async () => {
         const res = await fetch(`${API_BASE_URL}/partnerships`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(partnershipPayload),
+            headers: getAuthHeaders(),
         });
-        if (!res.ok) throw new Error("Failed to create partnership");
-        return await res.json();
-    },
-    updateFacultyApproval: async (partnershipId, approvalPayload) => {
-        const res = await fetch(`${API_BASE_URL}/partnerships/${partnershipId}/approval`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(approvalPayload),
-        });
-        if (!res.ok) throw new Error("Failed to update faculty approval");
+        if (!res.ok) return [];
         return await res.json();
     },
 };

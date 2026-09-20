@@ -128,7 +128,7 @@ export default function RegisterForm({ onSwitchToLogin, initialRole = "" }) {
     } catch (err) {
       setError(err.message || "Registration failed. Please try again.");
     } finally {
-      setIsLoading ? null : setLoading(false);
+      setLoading(false);
     }
   };
 

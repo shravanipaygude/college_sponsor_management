@@ -1,87 +1,112 @@
 import React, { createContext, useState, useEffect } from "react";
-import {
-  seedDefaultUsers,
-  validateCredentials,
-  addUser,
-} from "../data/mockUsers";
+import { api } from "../services/api";
 
-// AuthContext shares authentication state across the application.
-// Components access it through the useAuth() custom hook.
 export const AuthContext = createContext(null);
 
 /**
- * AuthProvider wraps the entire application and manages:
- * - user: the currently authenticated user object
- * - role: the user's role (committee / sponsor / faculty)
- * - isAuthenticated: whether a user is logged in
- * - login / register / logout functions
- *
- * Mock frontend authentication for Experiment 2.
- * Real backend authentication and secure password handling
- * will be implemented in a later experiment.
+ * AuthProvider wraps the application and manages:
+ * - user: the currently authenticated user object from backend
+ * - role: the user's role ("committee" | "sponsor")
+ * - isAuthenticated: whether a valid JWT session exists
+ * - login / register / logout functions connecting to Node.js backend
  */
 export function AuthProvider({ children }) {
-  // useState manages the authenticated user and loading state.
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // useEffect seeds default demo users and restores persisted session on mount.
+  // Restore persisted session on mount and verify token with backend
   useEffect(() => {
-    // Seed demo accounts on first load
-    seedDefaultUsers();
+    const initAuth = async () => {
+      const storedToken =
+        localStorage.getItem("sf_jwt_token") ||
+        sessionStorage.getItem("sf_jwt_token");
 
-    // useEffect restores the persisted SponsorFlow session.
-    // Check localStorage first (Remember Me), then sessionStorage.
-    const storedSession =
-      localStorage.getItem("sf_session") ||
-      sessionStorage.getItem("sf_session");
+      const storedSession =
+        localStorage.getItem("sf_session") ||
+        sessionStorage.getItem("sf_session");
 
-    if (storedSession) {
-      try {
-        const sessionData = JSON.parse(storedSession);
-        if (sessionData && sessionData.role === "faculty") {
-          // Clear unsupported faculty role session
-          localStorage.removeItem("sf_session");
-          sessionStorage.removeItem("sf_session");
-          setUser(null);
-          setIsAuthenticated(false);
-        } else {
-          setUser(sessionData);
-          setIsAuthenticated(true);
+      if (storedToken && storedSession) {
+        try {
+          const parsedUser = JSON.parse(storedSession);
+          if (parsedUser.role === "faculty") {
+            // Clear unsupported faculty role session
+            localStorage.removeItem("sf_jwt_token");
+            localStorage.removeItem("sf_session");
+            sessionStorage.removeItem("sf_jwt_token");
+            sessionStorage.removeItem("sf_session");
+            setUser(null);
+            setIsAuthenticated(false);
+          } else {
+            // Verify token with backend
+            const activeUser = await api.getCurrentUser();
+            if (activeUser) {
+              const fullUser = {
+                ...parsedUser,
+                ...activeUser,
+                roleLabel:
+                  activeUser.role === "sponsor"
+                    ? "Corporate Sponsor"
+                    : "Committee Head",
+              };
+              setUser(fullUser);
+              setIsAuthenticated(true);
+            } else {
+              // Token expired or invalid
+              logout();
+            }
+          }
+        } catch {
+          logout();
         }
-      } catch {
-        // Corrupted session — clear it
-        localStorage.removeItem("sf_session");
-        sessionStorage.removeItem("sf_session");
       }
-    }
+      setLoading(false);
+    };
 
-    setLoading(false);
+    initAuth();
   }, []);
 
   /**
-   * login() validates credentials and persists the session.
-   * Uses localStorage when Remember Me is enabled, sessionStorage otherwise.
+   * login() authenticates credentials via REST API, receives JWT, and persists session.
    */
   const login = async (email, password, rememberMe = false) => {
-    // Simulate brief network delay for realistic UX
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    const response = await api.loginUser(email, password);
 
-    const validUser = validateCredentials(email, password);
-    if (!validUser) {
-      throw new Error("Invalid email or password. Please try again.");
+    if (!response || !response.token) {
+      throw new Error("Invalid response from authentication server.");
     }
 
-    // Do NOT store passwords inside the active session.
-    const sessionData = { ...validUser };
+    const { token, user: fetchedUser } = response;
 
-    // useEffect-compatible: persist session based on Remember Me preference
+    // Avatar initials
+    const nameParts = (fetchedUser.name || "User").trim().split(" ");
+    const avatar =
+      nameParts.length >= 2
+        ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
+        : (fetchedUser.name || "US").slice(0, 2).toUpperCase();
+
+    const roleLabel =
+      fetchedUser.role === "sponsor" ? "Corporate Sponsor" : "Committee Head";
+
+    const sessionData = {
+      ...fetchedUser,
+      avatar,
+      roleLabel,
+      college: fetchedUser.collegeName || fetchedUser.college || "VESIT",
+      committee: fetchedUser.role === "committee" ? fetchedUser.organizationName : "",
+      company: fetchedUser.role === "sponsor" ? fetchedUser.organizationName : "",
+    };
+
+    // Store JWT token and session according to Remember Me setting
     if (rememberMe) {
+      localStorage.setItem("sf_jwt_token", token);
       localStorage.setItem("sf_session", JSON.stringify(sessionData));
+      sessionStorage.removeItem("sf_jwt_token");
       sessionStorage.removeItem("sf_session");
     } else {
+      sessionStorage.setItem("sf_jwt_token", token);
       sessionStorage.setItem("sf_session", JSON.stringify(sessionData));
+      localStorage.removeItem("sf_jwt_token");
       localStorage.removeItem("sf_session");
     }
 
@@ -92,47 +117,25 @@ export function AuthProvider({ children }) {
   };
 
   /**
-   * register() creates a new mock user account in localStorage.
-   * Does NOT auto-login — user must log in after registration.
+   * register() submits user registration to backend MongoDB.
    */
   const register = async (userData) => {
-    // Simulate brief network delay
-    await new Promise((resolve) => setTimeout(resolve, 600));
-
-    // Generate avatar initials from name
-    const nameParts = userData.name.trim().split(" ");
-    const avatar =
-      nameParts.length >= 2
-        ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
-        : userData.name.slice(0, 2).toUpperCase();
-
-    // Build role label
-    const roleLabelMap = {
-      committee: "Committee Head",
-      sponsor: "Corporate Sponsor",
-    };
-
-    const newUser = addUser({
-      ...userData,
-      avatar,
-      roleLabel: roleLabelMap[userData.role] || "Member",
-    });
-
-    return newUser;
+    const response = await api.registerUser(userData);
+    return response.user;
   };
 
   /**
-   * logout() clears session from all storage and resets state.
-   * No full browser reload required.
+   * logout() purges JWT token and user session from storage and resets state.
    */
   const logout = () => {
+    localStorage.removeItem("sf_jwt_token");
     localStorage.removeItem("sf_session");
+    sessionStorage.removeItem("sf_jwt_token");
     sessionStorage.removeItem("sf_session");
     setUser(null);
     setIsAuthenticated(false);
   };
 
-  // The role is derived from the authenticated user object.
   const role = user?.role || null;
 
   return (

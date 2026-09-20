@@ -2,153 +2,19 @@ const express = require("express");
 const router = express.Router();
 const mongoose = require("mongoose");
 const Partnership = require("../models/Partnership");
-const User = require("../models/User");
-const Event = require("../models/Event");
-const Opportunity = require("../models/Opportunity");
-const Request = require("../models/Request");
+const { authenticateToken } = require("../middleware/auth");
 
-// Create a new partnership (e.g., when a request is accepted)
-// Prevents accidental duplicate partnerships for the same request
-router.post("/", async (req, res) => {
+// Get all partnerships for the logged-in committee or sponsor user
+router.get("/", authenticateToken, async (req, res) => {
     try {
-        const body = { ...req.body };
-        if (body.committee && typeof body.committee === "string" && mongoose.Types.ObjectId.isValid(body.committee)) {
-            body.committee = new mongoose.Types.ObjectId(body.committee);
-        }
-        if (body.sponsor && typeof body.sponsor === "string" && mongoose.Types.ObjectId.isValid(body.sponsor)) {
-            body.sponsor = new mongoose.Types.ObjectId(body.sponsor);
-        }
-        if (body.request && typeof body.request === "string" && mongoose.Types.ObjectId.isValid(body.request)) {
-            body.request = new mongoose.Types.ObjectId(body.request);
-        }
-        if (body.event && typeof body.event === "string" && mongoose.Types.ObjectId.isValid(body.event)) {
-            body.event = new mongoose.Types.ObjectId(body.event);
-        }
-        if (body.opportunity && typeof body.opportunity === "string" && mongoose.Types.ObjectId.isValid(body.opportunity)) {
-            body.opportunity = new mongoose.Types.ObjectId(body.opportunity);
-        }
-        if (body.approvedBy && typeof body.approvedBy === "string" && mongoose.Types.ObjectId.isValid(body.approvedBy)) {
-            body.approvedBy = new mongoose.Types.ObjectId(body.approvedBy);
-        }
+        const userId = req.user._id;
 
-        const requestId = body.request;
+        // Query partnerships where the authenticated user is either committee or sponsor
+        const query = {
+            $or: [{ committee: userId }, { sponsor: userId }],
+        };
 
-        if (requestId) {
-            const existingPartnership = await Partnership.findOne({ request: requestId })
-                .populate("committee")
-                .populate("sponsor")
-                .populate("request")
-                .populate("event")
-                .populate("opportunity");
-
-            if (existingPartnership) {
-                return res.status(200).json(existingPartnership);
-            }
-
-            // Derive committee and sponsor from request if missing
-            const requestDoc = await Request.findById(requestId);
-            if (requestDoc) {
-                if (!body.event && requestDoc.event) body.event = requestDoc.event;
-                if (!body.opportunity && requestDoc.opportunity) body.opportunity = requestDoc.opportunity;
-
-                if (!body.committee || !body.sponsor) {
-                    const rawSender = requestDoc.sender?._id || requestDoc.sender;
-                    const rawReceiver = requestDoc.receiver?._id || requestDoc.receiver;
-                    const rawEvent = requestDoc.event?._id || requestDoc.event;
-
-                    if (rawEvent || requestDoc.senderRole === "sponsor" || requestDoc.receiverRole === "committee") {
-                        body.committee = body.committee || rawReceiver;
-                        body.sponsor = body.sponsor || rawSender;
-                    } else {
-                        body.committee = body.committee || rawSender;
-                        body.sponsor = body.sponsor || rawReceiver;
-                    }
-                }
-            }
-        }
-
-        if (body.event && body.sponsor) {
-            const existingMatch = await Partnership.findOne({ event: body.event, sponsor: body.sponsor })
-                .populate("committee")
-                .populate("sponsor")
-                .populate("request")
-                .populate("event")
-                .populate("opportunity");
-
-            if (existingMatch) {
-                return res.status(200).json(existingMatch);
-            }
-        }
-
-        let savedPartnership;
-        try {
-            const partnership = new Partnership(body);
-            savedPartnership = await partnership.save();
-        } catch (saveErr) {
-            if (saveErr.code === 11000 && requestId) {
-                const existingPartnership = await Partnership.findOne({ request: requestId })
-                    .populate("committee")
-                    .populate("sponsor")
-                    .populate("request")
-                    .populate("event")
-                    .populate("opportunity");
-                if (existingPartnership) {
-                    return res.status(200).json(existingPartnership);
-                }
-            }
-            throw saveErr;
-        }
-
-        const populatedPartnership = await Partnership.findById(savedPartnership._id)
-            .populate("committee")
-            .populate("sponsor")
-            .populate("request")
-            .populate("event")
-            .populate("opportunity");
-
-        res.status(201).json(populatedPartnership);
-    } catch (error) {
-        res.status(500).json({
-            message: "Failed to create partnership",
-            error: error.message,
-        });
-    }
-});
-
-// Get all partnerships (supports filtering by facultyApprovalStatus, committee, sponsor)
-router.get("/", async (req, res) => {
-    try {
-        const query = {};
-        if (req.query.facultyApprovalStatus) {
-            query.facultyApprovalStatus = req.query.facultyApprovalStatus;
-        }
-
-        const conditions = [];
-
-        if (req.query.committee) {
-            const commStr = String(req.query.committee).trim();
-            if (mongoose.Types.ObjectId.isValid(commStr)) {
-                const commObjId = new mongoose.Types.ObjectId(commStr);
-                conditions.push({ $or: [{ committee: commObjId }, { committee: commStr }] });
-            } else {
-                conditions.push({ committee: commStr });
-            }
-        }
-        if (req.query.sponsor) {
-            const sponStr = String(req.query.sponsor).trim();
-            if (mongoose.Types.ObjectId.isValid(sponStr)) {
-                const sponObjId = new mongoose.Types.ObjectId(sponStr);
-                conditions.push({ $or: [{ sponsor: sponObjId }, { sponsor: sponStr }] });
-            } else {
-                conditions.push({ sponsor: sponStr });
-            }
-        }
-
-        if (conditions.length > 0) {
-            query.$and = conditions;
-        }
-
-        let partnerships = await Partnership.find(query)
+        const partnerships = await Partnership.find(query)
             .populate("committee")
             .populate("sponsor")
             .populate("request")
@@ -156,95 +22,53 @@ router.get("/", async (req, res) => {
             .populate("opportunity")
             .sort({ createdAt: -1 });
 
-        if (req.query.collegeName) {
-            const targetCollege = req.query.collegeName.trim().toLowerCase();
-            partnerships = partnerships.filter((p) => {
-                const docCollege = (
-                    p.collegeName ||
-                    p.committee?.collegeName ||
-                    p.committee?.college ||
-                    p.event?.collegeName ||
-                    "VESIT"
-                ).toLowerCase();
-                return docCollege === targetCollege;
-            });
-        }
-
         res.json(partnerships);
     } catch (error) {
         res.status(500).json({
+            success: false,
             message: "Failed to fetch partnerships",
             error: error.message,
         });
     }
 });
 
-// Get one partnership by ID
-router.get("/:id", async (req, res) => {
+// Get one partnership by ID — Ownership required
+router.get("/:id", authenticateToken, async (req, res) => {
     try {
+        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+            return res.status(400).json({ success: false, message: "Invalid partnership ID" });
+        }
+
         const partnership = await Partnership.findById(req.params.id)
+            .populate("committee")
+            .populate("sponsor")
             .populate("request")
             .populate("event")
             .populate("opportunity");
 
         if (!partnership) {
             return res.status(404).json({
+                success: false,
                 message: "Partnership not found",
+            });
+        }
+
+        const commId = partnership.committee ? (partnership.committee._id || partnership.committee).toString() : null;
+        const sponId = partnership.sponsor ? (partnership.sponsor._id || partnership.sponsor).toString() : null;
+        const userId = req.user._id.toString();
+
+        if (commId !== userId && sponId !== userId) {
+            return res.status(403).json({
+                success: false,
+                message: "Forbidden. You do not have access to this partnership.",
             });
         }
 
         res.json(partnership);
     } catch (error) {
         res.status(500).json({
+            success: false,
             message: "Failed to fetch partnership",
-            error: error.message,
-        });
-    }
-});
-
-// Faculty approval/rejection endpoint
-// Updates facultyApprovalStatus ("approved" | "rejected" | "pending"), facultyRemarks, approvedBy
-router.patch("/:id/approval", async (req, res) => {
-    try {
-        const { facultyApprovalStatus, facultyRemarks, approvedBy } = req.body;
-
-        if (!["pending", "approved", "rejected"].includes(facultyApprovalStatus)) {
-            return res.status(400).json({
-                message: "facultyApprovalStatus must be pending, approved, or rejected",
-            });
-        }
-
-        const updateData = {
-            facultyApprovalStatus,
-        };
-
-        if (facultyRemarks !== undefined) {
-            updateData.facultyRemarks = facultyRemarks;
-        }
-
-        if (approvedBy !== undefined && mongoose.Types.ObjectId.isValid(approvedBy)) {
-            updateData.approvedBy = approvedBy;
-        }
-
-        const partnership = await Partnership.findByIdAndUpdate(
-            req.params.id,
-            updateData,
-            { new: true }
-        )
-            .populate("request")
-            .populate("event")
-            .populate("opportunity");
-
-        if (!partnership) {
-            return res.status(404).json({
-                message: "Partnership not found",
-            });
-        }
-
-        res.json(partnership);
-    } catch (error) {
-        res.status(500).json({
-            message: "Failed to update faculty approval status",
             error: error.message,
         });
     }
