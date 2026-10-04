@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
-const JWT_SECRET = process.env.JWT_SECRET || "sponnect_jwt_secret_key_2026_spec";
+const JWT_SECRET = process.env.JWT_SECRET || "sponnect_jwt_secret_key_exp6_2026";
 
 /**
  * Middleware to authenticate requests using JWT token in Authorization header.
