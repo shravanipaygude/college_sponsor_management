@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import {
   Menu,
   Search,
@@ -12,21 +13,38 @@ import {
   FileText,
   Sun,
   Moon,
+  Radio,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
+import { markAllNotificationsAsRead } from "../../store/slices/notificationSlice";
+import { subscribeConnectionStatus } from "../../services/socket";
 import Modal from "./Modal";
 
 export default function Topbar({ onOpenMobileSidebar, activeTab, currentUser, notifications: notifData, getTabTitle, onLogout }) {
   const { theme, toggleTheme } = useTheme();
+  const dispatch = useDispatch();
+  const reduxNotifications = useSelector((state) => state.notifications?.items || []);
+
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [notifications, setNotifications] = useState(notifData || []);
+  const [socketStatus, setSocketStatus] = useState("disconnected");
   const [showProfileModal, setShowProfileModal] = useState(false);
 
+  // Subscribe to real-time socket connection status
+  useEffect(() => {
+    const unsubscribe = subscribeConnectionStatus((status) => {
+      setSocketStatus(status);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const notifications = reduxNotifications.length > 0 ? reduxNotifications : (notifData || []);
   const unreadCount = notifications.filter((n) => n.unread).length;
 
   const markAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, unread: false })));
+    dispatch(markAllNotificationsAsRead());
   };
 
   const defaultGetTabTitle = (tab) => ({
@@ -80,6 +98,51 @@ export default function Topbar({ onOpenMobileSidebar, activeTab, currentUser, no
               </>
             )}
           </button>
+
+          {/* Socket.IO Connection Status Indicator */}
+          <div
+            title={`WebSocket: ${socketStatus}`}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold font-sans-ui transition-all duration-300"
+            style={{
+              borderColor:
+                socketStatus === "connected"
+                  ? "var(--color-emerald-500, #10b981)"
+                  : socketStatus === "connecting" || socketStatus === "reconnecting"
+                  ? "#f59e0b"
+                  : "#ef4444",
+              color:
+                socketStatus === "connected"
+                  ? "var(--color-emerald-600, #059669)"
+                  : socketStatus === "connecting" || socketStatus === "reconnecting"
+                  ? "#d97706"
+                  : "#dc2626",
+              background:
+                socketStatus === "connected"
+                  ? "rgba(16,185,129,0.08)"
+                  : socketStatus === "connecting" || socketStatus === "reconnecting"
+                  ? "rgba(245,158,11,0.08)"
+                  : "rgba(239,68,68,0.08)",
+            }}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                socketStatus === "connected"
+                  ? "bg-emerald-500 animate-pulse"
+                  : socketStatus === "connecting" || socketStatus === "reconnecting"
+                  ? "bg-amber-500 animate-pulse"
+                  : "bg-red-500"
+              }`}
+            />
+            <span>
+              {socketStatus === "connected"
+                ? "Live"
+                : socketStatus === "connecting"
+                ? "Connecting"
+                : socketStatus === "reconnecting"
+                ? "Reconnecting"
+                : "Offline"}
+            </span>
+          </div>
 
           {/* Notification Bell Dropdown */}
           <div className="relative">

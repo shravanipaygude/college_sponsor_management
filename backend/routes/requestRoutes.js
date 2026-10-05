@@ -101,6 +101,31 @@ router.post("/", authenticateToken, async (req, res) => {
             .populate("event")
             .populate("opportunity");
 
+        // Emit real-time Socket.IO event 'request:new' to target recipient room
+        const io = req.app.get("io");
+        if (io && populatedRequest && populatedRequest.receiver) {
+            const targetRoom = `user:${populatedRequest.receiver._id.toString()}`;
+            const requestPayload = {
+                requestId: populatedRequest._id,
+                sender: {
+                    _id: populatedRequest.sender._id,
+                    name: populatedRequest.sender.name,
+                    organizationName: populatedRequest.sender.organizationName,
+                    role: populatedRequest.sender.role,
+                },
+                receiver: populatedRequest.receiver._id,
+                event: populatedRequest.event ? { _id: populatedRequest.event._id, title: populatedRequest.event.title } : null,
+                opportunity: populatedRequest.opportunity ? { _id: populatedRequest.opportunity._id, title: populatedRequest.opportunity.title } : null,
+                message: populatedRequest.message,
+                supportRequested: populatedRequest.supportRequested,
+                offerDetails: populatedRequest.offerDetails,
+                status: populatedRequest.status,
+                timestamp: populatedRequest.createdAt || new Date().toISOString(),
+            };
+            console.log(`[Socket.IO] Emitting 'request:new' to room: ${targetRoom}`);
+            io.to(targetRoom).emit("request:new", requestPayload);
+        }
+
         res.status(201).json(populatedRequest);
     } catch (error) {
         console.error("Error creating request:", error);
@@ -251,6 +276,51 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
                         throw createErr;
                     }
                 }
+            }
+        }
+
+        // Socket.IO Real-Time Notifications
+        const io = req.app.get("io");
+        const origSenderId = request.sender ? (request.sender._id || request.sender).toString() : null;
+        const origReceiverId = request.receiver ? (request.receiver._id || request.receiver).toString() : null;
+
+        if (io && origSenderId) {
+            const senderRoom = `user:${origSenderId}`;
+            const statusPayload = {
+                requestId: request._id,
+                status: request.status,
+                sender: origSenderId,
+                receiver: origReceiverId,
+                event: request.event ? { _id: request.event._id, title: request.event.title } : null,
+                opportunity: request.opportunity ? { _id: request.opportunity._id, title: request.opportunity.title } : null,
+                timestamp: new Date().toISOString(),
+            };
+            console.log(`[Socket.IO] Emitting 'request:statusChanged' to room: ${senderRoom}`);
+            io.to(senderRoom).emit("request:statusChanged", statusPayload);
+        }
+
+        if (io && partnershipDoc) {
+            const commId = partnershipDoc.committee ? (partnershipDoc.committee._id || partnershipDoc.committee).toString() : null;
+            const sponId = partnershipDoc.sponsor ? (partnershipDoc.sponsor._id || partnershipDoc.sponsor).toString() : null;
+
+            const pPayload = {
+                partnershipId: partnershipDoc._id,
+                requestId: request._id,
+                committee: commId,
+                sponsor: sponId,
+                event: partnershipDoc.event ? { _id: partnershipDoc.event._id, title: partnershipDoc.event.title } : null,
+                opportunity: partnershipDoc.opportunity ? { _id: partnershipDoc.opportunity._id, title: partnershipDoc.opportunity.title } : null,
+                partnershipStatus: partnershipDoc.partnershipStatus,
+                timestamp: partnershipDoc.createdAt || new Date().toISOString(),
+            };
+
+            if (commId) {
+                console.log(`[Socket.IO] Emitting 'partnership:created' to room: user:${commId}`);
+                io.to(`user:${commId}`).emit("partnership:created", pPayload);
+            }
+            if (sponId) {
+                console.log(`[Socket.IO] Emitting 'partnership:created' to room: user:${sponId}`);
+                io.to(`user:${sponId}`).emit("partnership:created", pPayload);
             }
         }
 

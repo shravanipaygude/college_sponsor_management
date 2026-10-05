@@ -32,7 +32,7 @@ const notificationSlice = createSlice({
       }
     },
     markAllNotificationsAsRead: (state, action) => {
-      const roleFilter = action.payload;
+      const roleFilter = action.payload; // optional: role string, or undefined to mark all
       state.items.forEach((n) => {
         if (!roleFilter || n.role === roleFilter) {
           n.unread = false;

@@ -9,6 +9,8 @@ import {
 import { fetchEventsThunk, fetchOpportunitiesThunk } from "./store/slices/sponsorshipSlice";
 import { fetchRequestsThunk } from "./store/slices/requestSlice";
 import { fetchPartnershipsThunk } from "./store/slices/partnershipSlice";
+import { initSocket, disconnectSocket } from "./services/socket";
+import { useSocketNotifications } from "./hooks/useSocketNotifications";
 
 // Auth — Experiment 2
 import { useAuth } from "./hooks/useAuth";
@@ -117,6 +119,22 @@ export default function App() {
   const dispatch = useDispatch();
   // useAuth is a custom hook for accessing AuthContext.
   const { user, role, isAuthenticated, loading, logout } = useAuth();
+
+  // Experiment 8 — Socket.IO lifecycle: connect after login, disconnect after logout
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      initSocket(); // reads JWT from localStorage/sessionStorage automatically
+    } else {
+      disconnectSocket();
+    }
+    return () => {
+      // Cleanup on unmount (tab close / HMR)
+      if (!isAuthenticated) disconnectSocket();
+    };
+  }, [isAuthenticated, user?._id]);
+
+  // Experiment 8 — Real-time notifications via Socket.IO events
+  useSocketNotifications(isAuthenticated ? user : null);
 
   useEffect(() => {
     if (isAuthenticated) {

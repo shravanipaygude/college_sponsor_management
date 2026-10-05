@@ -114,7 +114,76 @@ const seedDemoUsers = async () => {
     }
 };
 
-// Connect to MongoDB Atlas test database
+const http = require("http");
+const { Server } = require("socket.io");
+const jwt = require("jsonwebtoken");
+const { JWT_SECRET } = require("./middleware/auth");
+
+const PORT = process.env.PORT || 5000;
+
+const server = http.createServer(app);
+
+// Initialize Socket.IO with CORS
+const io = new Server(server, {
+    cors: {
+        origin: function (origin, callback) {
+            if (!origin || allowedOrigins.includes(origin)) {
+                callback(null, true);
+            } else {
+                callback(null, true);
+            }
+        },
+        credentials: true,
+    },
+});
+
+// Make io accessible across routes via req.app.get("io")
+app.set("io", io);
+
+// Socket.IO JWT Authentication Middleware
+io.use((socket, next) => {
+    const authHeader = socket.handshake.auth?.token || socket.handshake.headers?.authorization;
+    const token = authHeader ? authHeader.replace("Bearer ", "") : null;
+
+    if (!token) {
+        return next(new Error("Authentication failed: Missing JWT token"));
+    }
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const userId = decoded.userId || decoded.id || decoded._id;
+
+        if (!userId) {
+            return next(new Error("Authentication failed: Invalid payload"));
+        }
+
+        socket.userId = userId.toString();
+        socket.userRole = decoded.role;
+        next();
+    } catch (err) {
+        return next(new Error("Authentication failed: Token invalid or expired"));
+    }
+});
+
+// Socket.IO Connection & Room Join Handler
+io.on("connection", (socket) => {
+    const userRoom = `user:${socket.userId}`;
+    socket.join(userRoom);
+    console.log(`[Socket.IO] Authenticated user connected: ${socket.userId} -> Room: ${userRoom} (Socket ID: ${socket.id})`);
+
+    socket.on("joinUserRoom", () => {
+        if (socket.userId) {
+            socket.join(`user:${socket.userId}`);
+            console.log(`[Socket.IO] User explicitly joined room: user:${socket.userId}`);
+        }
+    });
+
+    socket.on("disconnect", (reason) => {
+        console.log(`[Socket.IO] User disconnected: ${socket.userId} (${reason})`);
+    });
+});
+
+// Connect to MongoDB Atlas test database and start server
 mongoose
     .connect(process.env.MONGO_URI, { dbName: "test" })
     .then(() => {
@@ -125,8 +194,6 @@ mongoose
         console.error("MongoDB Atlas connection error:", err.message);
     });
 
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+server.listen(PORT, () => {
+    console.log(`Server running with Socket.IO support on port ${PORT}`);
 });
