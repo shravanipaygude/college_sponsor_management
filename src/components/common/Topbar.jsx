@@ -18,7 +18,7 @@ import {
   WifiOff,
 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
-import { markAllNotificationsAsRead } from "../../store/slices/notificationSlice";
+import { markAllNotificationsAsRead, markNotificationAsRead } from "../../store/slices/notificationSlice";
 import { subscribeConnectionStatus } from "../../services/socket";
 import Modal from "./Modal";
 
@@ -179,35 +179,48 @@ export default function Topbar({ onOpenMobileSidebar, activeTab, currentUser, no
                 </div>
 
                 <div className="divide-y divide-[var(--border-subtle)] max-h-80 overflow-y-auto">
-                  {notifications.map((n) => (
-                    <div
-                      key={n.id}
-                      className={`p-3.5 flex items-start gap-3 transition-colors ${
-                        n.unread ? "bg-[var(--bg-surface-alt)]" : "hover:bg-[var(--bg-surface-alt)]/50"
-                      }`}
-                    >
-                      <div className="mt-0.5 p-1.5 rounded-lg bg-[var(--brand-primary)]/15 text-[var(--brand-primary)]">
-                        {n.title.includes("Proof") ? (
-                          <FileText className="w-4 h-4" />
-                        ) : n.title.includes("Request") || n.title.includes("Negotiation") ? (
-                          <Clock className="w-4 h-4" />
-                        ) : (
-                          <CheckCircle2 className="w-4 h-4" />
+                  {notifications.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-[var(--text-secondary)]">
+                      No notifications yet
+                    </div>
+                  ) : (
+                    notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        onClick={() => n.unread && dispatch(markNotificationAsRead(n.id))}
+                        className={`p-3.5 flex items-start gap-3 transition-colors ${
+                          n.unread
+                            ? "bg-[var(--bg-surface-alt)] cursor-pointer hover:bg-[var(--bg-surface-alt)]/80"
+                            : "hover:bg-[var(--bg-surface-alt)]/50 cursor-default"
+                        }`}
+                        title={n.unread ? "Click to mark as read" : undefined}
+                      >
+                        <div className="mt-0.5 p-1.5 rounded-lg bg-[var(--brand-primary)]/15 text-[var(--brand-primary)]">
+                          {n.title.includes("Proof") ? (
+                            <FileText className="w-4 h-4" />
+                          ) : n.title.includes("Request") || n.title.includes("Negotiation") ? (
+                            <Clock className="w-4 h-4" />
+                          ) : (
+                            <CheckCircle2 className="w-4 h-4" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between text-xs mb-0.5">
+                            <span className="font-semibold text-[var(--text-primary)] truncate">
+                              {n.title}
+                            </span>
+                            <span className="text-[10px] text-[var(--text-secondary)]">{n.time}</span>
+                          </div>
+                          <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                            {n.message}
+                          </p>
+                        </div>
+                        {n.unread && (
+                          <span className="mt-1 w-1.5 h-1.5 rounded-full bg-[var(--accent-pink)] flex-shrink-0" />
                         )}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between text-xs mb-0.5">
-                          <span className="font-semibold text-[var(--text-primary)] truncate">
-                            {n.title}
-                          </span>
-                          <span className="text-[10px] text-[var(--text-secondary)]">{n.time}</span>
-                        </div>
-                        <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                          {n.message}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
 
                 <div className="p-2.5 bg-[var(--bg-surface-alt)] border-t border-[var(--border-subtle)] text-center">

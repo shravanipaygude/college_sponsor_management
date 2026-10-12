@@ -120,16 +120,19 @@ export default function App() {
   // useAuth is a custom hook for accessing AuthContext.
   const { user, role, isAuthenticated, loading, logout } = useAuth();
 
-  // Experiment 8 — Socket.IO lifecycle: connect after login, disconnect after logout
+  // Experiment 8 — Socket.IO lifecycle: connect after login, disconnect after logout.
+  // Cleanup always disconnects so that HMR reloads and user-switches never leave a
+  // ghost socket connected to the previous user's private room.
   useEffect(() => {
     if (isAuthenticated && user) {
-      initSocket(); // reads JWT from localStorage/sessionStorage automatically
+      initSocket(); // reads JWT from localStorage / sessionStorage automatically
     } else {
       disconnectSocket();
     }
     return () => {
-      // Cleanup on unmount (tab close / HMR)
-      if (!isAuthenticated) disconnectSocket();
+      // Always disconnect on effect teardown (logout, user-switch, unmount, HMR).
+      // initSocket() will reconnect on the next successful effect run.
+      disconnectSocket();
     };
   }, [isAuthenticated, user?._id]);
 

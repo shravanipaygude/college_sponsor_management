@@ -81,33 +81,15 @@ app.use((err, req, res, next) => {
 // Function to seed default demo accounts if database is empty
 const seedDemoUsers = async () => {
     try {
+        const { demoUsers } = require("./seed_demo_users");
         const User = require("./models/User");
-        const committeeDemo = await User.findOne({ email: "committee@sponnect.demo" });
-        if (!committeeDemo) {
-            const cUser = new User({
-                name: "Shravani",
-                email: "committee@sponnect.demo",
-                password: "sponsor123",
-                role: "committee",
-                organizationName: "CSI",
-                collegeName: "VESIT",
-            });
-            await cUser.save();
-            console.log("Seeded demo committee user: committee@sponnect.demo");
-        }
-
-        const sponsorDemo = await User.findOne({ email: "sponsor@sponnect.demo" });
-        if (!sponsorDemo) {
-            const sUser = new User({
-                name: "Arjun Mehta",
-                email: "sponsor@sponnect.demo",
-                password: "sponsor123",
-                role: "sponsor",
-                organizationName: "NovaAI Technologies",
-                collegeName: "",
-            });
-            await sUser.save();
-            console.log("Seeded demo sponsor user: sponsor@sponnect.demo");
+        for (const account of demoUsers) {
+            const existing = await User.findOne({ email: account.email });
+            if (!existing) {
+                const u = new User(account);
+                await u.save();
+                console.log(`Seeded demo user: ${account.email}`);
+            }
         }
     } catch (seedErr) {
         console.error("Error seeding demo accounts:", seedErr.message);
@@ -170,13 +152,6 @@ io.on("connection", (socket) => {
     const userRoom = `user:${socket.userId}`;
     socket.join(userRoom);
     console.log(`[Socket.IO] Authenticated user connected: ${socket.userId} -> Room: ${userRoom} (Socket ID: ${socket.id})`);
-
-    socket.on("joinUserRoom", () => {
-        if (socket.userId) {
-            socket.join(`user:${socket.userId}`);
-            console.log(`[Socket.IO] User explicitly joined room: user:${socket.userId}`);
-        }
-    });
 
     socket.on("disconnect", (reason) => {
         console.log(`[Socket.IO] User disconnected: ${socket.userId} (${reason})`);

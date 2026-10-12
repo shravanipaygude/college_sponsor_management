@@ -3,7 +3,7 @@ import { useDispatch } from "react-redux";
 import { addNotification } from "../store/slices/notificationSlice";
 import { fetchRequestsThunk } from "../store/slices/requestSlice";
 import { fetchPartnershipsThunk } from "../store/slices/partnershipSlice";
-import { getSocket } from "../services/socket";
+import { getSocket, subscribeConnectionStatus } from "../services/socket";
 
 /**
  * Experiment 8 — useSocketNotifications
@@ -12,11 +12,15 @@ import { getSocket } from "../services/socket";
  * the correct Redux actions so notifications + data refresh without page reload.
  *
  * Events handled:
- *   request:new          → committee gets notified of incoming sponsor request
+ *   request:new           → committee gets notified of incoming sponsor request
  *   request:statusChanged → sponsor gets notified when request is accepted/declined
- *   partnership:created  → both committee + sponsor notified when partnership is formed
+ *   partnership:created   → both committee + sponsor notified when partnership is formed
  *
- * This hook is mounted once in App.jsx after authentication, and cleaned up on logout.
+ * Race-condition safe: uses subscribeConnectionStatus to register listeners
+ * whether the socket is already connected when the hook mounts or connects later
+ * (e.g., slow network, React Strict Mode double-mount, reconnection after dropout).
+ *
+ * Mounted once in App.jsx after authentication; cleaned up on logout or user change.
  */
 export function useSocketNotifications(user) {
   const dispatch = useDispatch();
@@ -24,13 +28,11 @@ export function useSocketNotifications(user) {
   useEffect(() => {
     if (!user) return;
 
-    const socket = getSocket();
-    if (!socket) return;
-
     const roleLabel = user.role === "sponsor" ? "Corporate Sponsor" : "Committee Head";
 
-    // ── request:new ─────────────────────────────────────────────
-    // Committee receives this when a sponsor sends a sponsorship request
+    // ─── Event handlers ──────────────────────────────────────────────────────
+
+    // request:new — committee is notified when a sponsor sends a sponsorship request
     const onRequestNew = (data) => {
       console.log("[Socket.IO] Received request:new", data);
       const senderName = data.sender?.name || data.sender?.organizationName || "A sponsor";
@@ -41,15 +43,15 @@ export function useSocketNotifications(user) {
           role: roleLabel,
           title: "New Sponsorship Request",
           message: `${senderName} wants to sponsor ${eventTitle}.`,
+          timestamp: data.timestamp,
         })
       );
 
-      // Refresh requests in the store so UI updates
+      // Refresh requests in the store so the UI updates without a reload
       dispatch(fetchRequestsThunk());
     };
 
-    // ── request:statusChanged ────────────────────────────────────
-    // Sponsor receives this when committee accepts or declines
+    // request:statusChanged — sponsor is notified when committee accepts or declines
     const onRequestStatusChanged = (data) => {
       console.log("[Socket.IO] Received request:statusChanged", data);
       const status = data.status || "updated";
@@ -63,15 +65,14 @@ export function useSocketNotifications(user) {
           message: isAccepted
             ? `Your sponsorship proposal for "${eventTitle}" was accepted.`
             : `Your sponsorship proposal for "${eventTitle}" was declined.`,
+          timestamp: data.timestamp,
         })
       );
 
-      // Refresh requests so status reflects immediately
       dispatch(fetchRequestsThunk());
     };
 
-    // ── partnership:created ──────────────────────────────────────
-    // Both committee + sponsor receive this when a partnership is created
+    // partnership:created — both committee + sponsor are notified when a partnership is formed
     const onPartnershipCreated = (data) => {
       console.log("[Socket.IO] Received partnership:created", data);
       const eventTitle = data.event?.title || data.opportunity?.title || "a recent request";
@@ -81,22 +82,64 @@ export function useSocketNotifications(user) {
           role: roleLabel,
           title: "Partnership Created! 🤝",
           message: `A new active partnership has been created for "${eventTitle}".`,
+          timestamp: data.timestamp,
         })
       );
 
-      // Refresh partnerships so the list updates immediately
       dispatch(fetchPartnershipsThunk());
     };
 
-    socket.on("request:new", onRequestNew);
-    socket.on("request:statusChanged", onRequestStatusChanged);
-    socket.on("partnership:created", onPartnershipCreated);
+    // ─── Listener management ─────────────────────────────────────────────────
 
-    // Cleanup listeners on unmount / user change
+    /**
+     * Attach all three event listeners to the given socket instance.
+     * Returns a cleanup function that removes them from that same instance.
+     * Calling with null/undefined is a no-op and returns a harmless cleanup.
+     */
+    const registerListeners = (socket) => {
+      if (!socket) return () => {};
+      socket.on("request:new", onRequestNew);
+      socket.on("request:statusChanged", onRequestStatusChanged);
+      socket.on("partnership:created", onPartnershipCreated);
+      return () => {
+        socket.off("request:new", onRequestNew);
+        socket.off("request:statusChanged", onRequestStatusChanged);
+        socket.off("partnership:created", onPartnershipCreated);
+      };
+    };
+
+    // Mutable ref to the current cleanup for the active set of listeners.
+    // Re-assigned on every reconnect to prevent duplicate handlers.
+    let unregisterListeners = () => {};
+
+    /**
+     * Subscribe to connection status changes. The callback fires immediately
+     * with the current status so there is no gap even if the socket is already
+     * connected when this hook mounts.
+     *
+     * On "connected": remove any stale listeners, then attach fresh ones to the
+     * current socket instance (handles both initial connect and every reconnect).
+     *
+     * On any non-connected status: remove listeners from the now-dead socket so
+     * they don't fire on a stale instance if the socket object is replaced.
+     */
+    const unsubStatus = subscribeConnectionStatus((status) => {
+      if (status === "connected") {
+        unregisterListeners(); // remove stale listeners before re-adding
+        unregisterListeners = registerListeners(getSocket());
+      } else {
+        // Socket is disconnecting / reconnecting — remove listeners from the
+        // current socket; they will be re-registered when "connected" fires again.
+        unregisterListeners();
+        unregisterListeners = () => {};
+      }
+    });
+
+    // ─── Cleanup ─────────────────────────────────────────────────────────────
+
     return () => {
-      socket.off("request:new", onRequestNew);
-      socket.off("request:statusChanged", onRequestStatusChanged);
-      socket.off("partnership:created", onPartnershipCreated);
+      unregisterListeners(); // remove socket event listeners
+      unsubStatus();         // stop watching connection status
     };
   }, [user, dispatch]);
 }
