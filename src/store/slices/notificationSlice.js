@@ -1,9 +1,8 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { api } from "../../services/api";
 
-// Experiment 3 / 8 — Redux Toolkit Notification Slice
-// Manages real-time frontend notifications dispatched across role actions.
-// Mock seed removed in Experiment 8 — all notifications now come from live
-// Socket.IO events or explicit in-component dispatches.
+// Experiment 8 — Redux Toolkit Notification Slice
+// Manages real-time frontend notifications with MongoDB Atlas persistence + Socket.IO live updates.
 
 /**
  * Format an ISO timestamp into a concise relative or absolute string.
@@ -34,49 +33,140 @@ function formatNotifTime(timestamp) {
   }
 }
 
+// Async Thunks for MongoDB backend persistence
+export const fetchNotificationsThunk = createAsyncThunk(
+  "notifications/fetchNotifications",
+  async () => {
+    return await api.getNotifications();
+  }
+);
+
+export const markNotificationReadThunk = createAsyncThunk(
+  "notifications/markNotificationRead",
+  async (notificationId) => {
+    await api.markNotificationRead(notificationId);
+    return notificationId;
+  }
+);
+
+export const markAllNotificationsReadThunk = createAsyncThunk(
+  "notifications/markAllNotificationsRead",
+  async () => {
+    await api.markAllNotificationsRead();
+    return true;
+  }
+);
+
 const notificationSlice = createSlice({
   name: "notifications",
   initialState: {
-    // Starts empty — populated exclusively by real-time Socket.IO events
-    // or explicit in-component dispatches (no mock data).
     items: [],
+    loading: false,
   },
   reducers: {
     addNotification: (state, action) => {
-      // Derive a safe, monotonically-increasing id even from an empty list
-      const maxId = state.items.length > 0
-        ? Math.max(...state.items.map((n) => n.id ?? 0))
-        : 0;
+      const payload = action.payload;
+      if (!payload) return;
+
+      const notifId = payload._id || payload.id;
+
+      // Duplicate prevention: avoid inserting if already present by _id or id
+      if (
+        notifId &&
+        state.items.some(
+          (n) => (n._id && n._id === notifId) || (n.id && n.id === notifId)
+        )
+      ) {
+        return;
+      }
+
+      // Safe monotonic numeric id fallback
+      const maxId =
+        state.items.length > 0
+          ? Math.max(
+              ...state.items.map((n) =>
+                typeof n.id === "number" ? n.id : 0
+              )
+            )
+          : 0;
 
       const newNotification = {
-        id: maxId + 1,
-        role: action.payload.role || "Committee Head",
-        title: action.payload.title || "Marketplace Notification",
-        message: action.payload.message || "",
-        // Use the server-supplied timestamp when available; gracefully fall back
-        time: formatNotifTime(action.payload.timestamp),
-        // Store raw timestamp so callers can reformat if needed
-        timestamp: action.payload.timestamp || new Date().toISOString(),
-        unread: true,
+        id: payload.id || payload._id || maxId + 1,
+        _id: payload._id || payload.id || null,
+        role: payload.role || "Committee Head",
+        title: payload.title || "Marketplace Notification",
+        message: payload.message || "",
+        time: formatNotifTime(payload.timestamp || payload.createdAt),
+        timestamp: payload.timestamp || payload.createdAt || new Date().toISOString(),
+        unread:
+          payload.read !== undefined
+            ? !payload.read
+            : payload.unread !== undefined
+            ? payload.unread
+            : true,
+        metadata: payload.metadata || {},
       };
+
       state.items.unshift(newNotification);
     },
 
     markNotificationAsRead: (state, action) => {
-      const notif = state.items.find((n) => n.id === action.payload);
+      const targetId = action.payload;
+      const notif = state.items.find(
+        (n) => n.id === targetId || n._id === targetId
+      );
       if (notif) {
         notif.unread = false;
       }
     },
 
     markAllNotificationsAsRead: (state, action) => {
-      const roleFilter = action.payload; // optional role string; marks all when omitted
+      const roleFilter = action.payload;
       state.items.forEach((n) => {
         if (!roleFilter || n.role === roleFilter) {
           n.unread = false;
         }
       });
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchNotificationsThunk.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchNotificationsThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        if (Array.isArray(action.payload)) {
+          state.items = action.payload.map((item) => ({
+            id: item._id,
+            _id: item._id,
+            role: item.role,
+            title: item.title,
+            message: item.message,
+            time: formatNotifTime(item.createdAt),
+            timestamp: item.createdAt,
+            unread: !item.read,
+            metadata: item.metadata || {},
+          }));
+        }
+      })
+      .addCase(fetchNotificationsThunk.rejected, (state) => {
+        state.loading = false;
+      })
+      .addCase(markNotificationReadThunk.fulfilled, (state, action) => {
+        const targetId = action.payload;
+        const notif = state.items.find(
+          (n) => n.id === targetId || n._id === targetId
+        );
+        if (notif) {
+          notif.unread = false;
+        }
+      })
+      .addCase(markAllNotificationsReadThunk.fulfilled, (state) => {
+        state.items.forEach((n) => {
+          n.unread = false;
+        });
+      });
   },
 });
 

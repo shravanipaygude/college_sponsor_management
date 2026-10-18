@@ -489,4 +489,46 @@ export const api = {
         if (!res.ok) return [];
         return await res.json();
     },
+
+    // Notifications (Experiment 8)
+    getNotifications: async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/notifications`, {
+                headers: getAuthHeaders(),
+            });
+            if (!res.ok) return [];
+            const data = await res.json();
+            return data.notifications || [];
+        } catch (err) {
+            console.error("GET /api/notifications error:", err.message);
+            return [];
+        }
+    },
+    markNotificationRead: async (notificationId) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/notifications/${notificationId}/read`, {
+                method: "PATCH",
+                headers: getAuthHeaders(),
+            });
+            if (!res.ok) return null;
+            return await res.json();
+        } catch (err) {
+            console.error("PATCH /api/notifications/:id/read error:", err.message);
+            return null;
+        }
+    },
+    markAllNotificationsRead: async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/notifications/read-all`, {
+                method: "PATCH",
+                headers: getAuthHeaders(),
+            });
+            if (!res.ok) return null;
+            return await res.json();
+        } catch (err) {
+            console.error("PATCH /api/notifications/read-all error:", err.message);
+            return null;
+        }
+    },
 };
+

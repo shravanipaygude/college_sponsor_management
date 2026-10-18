@@ -9,6 +9,7 @@ import {
 import { fetchEventsThunk, fetchOpportunitiesThunk } from "./store/slices/sponsorshipSlice";
 import { fetchRequestsThunk } from "./store/slices/requestSlice";
 import { fetchPartnershipsThunk } from "./store/slices/partnershipSlice";
+import { fetchNotificationsThunk } from "./store/slices/notificationSlice";
 import { initSocket, disconnectSocket } from "./services/socket";
 import { useSocketNotifications } from "./hooks/useSocketNotifications";
 
@@ -42,8 +43,6 @@ import SponsorDeals from "./components/sponsor/SponsorDeals";
 import SponsorDeliverableReview from "./components/sponsor/SponsorDeliverableReview";
 import SavedEvents from "./components/sponsor/SavedEvents";
 
-// Data
-import { notificationsData } from "./data/mockData";
 
 // ─── Role-Specific Navigation Definitions ────────────────────
 
@@ -145,6 +144,7 @@ export default function App() {
       dispatch(fetchOpportunitiesThunk());
       dispatch(fetchRequestsThunk());
       dispatch(fetchPartnershipsThunk());
+      dispatch(fetchNotificationsThunk());
     }
   }, [dispatch, isAuthenticated, user?._id]);
 
@@ -215,8 +215,6 @@ export default function App() {
     company: user?.company || "",
     department: user?.department || "",
   };
-
-  const currentNotifications = notificationsData[currentRole] || [];
 
   // Render role-specific content
   const renderContent = () => {
@@ -297,7 +295,6 @@ export default function App() {
           onOpenMobileSidebar={() => setMobileSidebarOpen(true)}
           activeTab={activeTab}
           currentUser={currentUser}
-          notifications={currentNotifications}
           getTabTitle={getTabTitle}
           onLogout={logout}
         />

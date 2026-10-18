@@ -11,6 +11,7 @@ const eventRoutes = require("./routes/eventRoutes");
 const opportunityRoutes = require("./routes/opportunityRoutes");
 const requestRoutes = require("./routes/requestRoutes");
 const partnershipRoutes = require("./routes/partnershipRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 
 const app = express();
 
@@ -59,6 +60,7 @@ app.use("/api/events", eventRoutes);
 app.use("/api/opportunities", opportunityRoutes);
 app.use("/api/requests", requestRoutes);
 app.use("/api/partnerships", partnershipRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 // Health check endpoint
 app.get("/", (req, res) => {

@@ -4,6 +4,8 @@ const Request = require("../models/Request");
 const Partnership = require("../models/Partnership");
 const Event = require("../models/Event");
 const Opportunity = require("../models/Opportunity");
+const Notification = require("../models/Notification");
+const { sendRequestStatusEmail, sendPartnershipCreatedEmail } = require("../services/emailService");
 const mongoose = require("mongoose");
 const { authenticateToken } = require("../middleware/auth");
 
@@ -101,7 +103,42 @@ router.post("/", authenticateToken, async (req, res) => {
             .populate("event")
             .populate("opportunity");
 
-        // Emit real-time Socket.IO event 'request:new' to target recipient room
+        // Determine notification metadata based on workflow type
+        const isApproach = senderRole === "committee";
+        const notifType = isApproach ? "approach_new" : "request_new";
+        const notifTitle = isApproach ? "New Opportunity Approach" : "New Sponsorship Request";
+        const senderName = populatedRequest.sender.organizationName || populatedRequest.sender.name || (isApproach ? "A committee" : "A sponsor");
+        const entityTitle = isApproach
+            ? (populatedRequest.opportunity ? populatedRequest.opportunity.title : "your opportunity")
+            : (populatedRequest.event ? populatedRequest.event.title : "your event");
+        const notifMessage = isApproach
+            ? `${senderName} approached your opportunity "${entityTitle}".`
+            : `${senderName} wants to sponsor ${entityTitle}.`;
+        const receiverRoleLabel = populatedRequest.receiverRole === "sponsor" ? "Corporate Sponsor" : "Committee Head";
+
+        // Persist Notification in MongoDB for authenticated recipient
+        let savedNotif = null;
+        try {
+            const newNotif = new Notification({
+                recipient: populatedRequest.receiver._id,
+                sender: populatedRequest.sender._id,
+                role: receiverRoleLabel,
+                type: notifType,
+                title: notifTitle,
+                message: notifMessage,
+                relatedId: populatedRequest._id,
+                metadata: {
+                    requestId: populatedRequest._id,
+                    eventId: targetEventId || null,
+                    opportunityId: targetOppId || null,
+                },
+            });
+            savedNotif = await newNotif.save();
+        } catch (notifErr) {
+            console.error("Non-blocking notification persistence error:", notifErr.message);
+        }
+
+        // Emit real-time Socket.IO event 'request:new' to target recipient room only
         const io = req.app.get("io");
         if (io && populatedRequest && populatedRequest.receiver) {
             const targetRoom = `user:${populatedRequest.receiver._id.toString()}`;
@@ -120,10 +157,14 @@ router.post("/", authenticateToken, async (req, res) => {
                 supportRequested: populatedRequest.supportRequested,
                 offerDetails: populatedRequest.offerDetails,
                 status: populatedRequest.status,
+                notification: savedNotif,
                 timestamp: populatedRequest.createdAt || new Date().toISOString(),
             };
             console.log(`[Socket.IO] Emitting 'request:new' to room: ${targetRoom}`);
             io.to(targetRoom).emit("request:new", requestPayload);
+            if (savedNotif) {
+                io.to(targetRoom).emit("notification:new", savedNotif);
+            }
         }
 
         res.status(201).json(populatedRequest);
@@ -193,6 +234,27 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
             return res.status(403).json({
                 success: false,
                 message: "Forbidden. Only the designated request recipient can accept or decline this request.",
+            });
+        }
+
+        // De-duplication check: Avoid re-processing, duplicate emails, and repeat notifications
+        if (unpopulatedReq.status === status) {
+            const currentReq = await Request.findById(req.params.id)
+                .populate("sender")
+                .populate("receiver")
+                .populate("event")
+                .populate("opportunity");
+            const currentPartnership = await Partnership.findOne({ request: req.params.id })
+                .populate("committee")
+                .populate("sponsor")
+                .populate("request")
+                .populate("event")
+                .populate("opportunity");
+
+            return res.json({
+                request: currentReq,
+                partnership: currentPartnership,
+                message: `Request is already ${status}`,
             });
         }
 
@@ -279,10 +341,58 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
             }
         }
 
-        // Socket.IO Real-Time Notifications
-        const io = req.app.get("io");
+        // Determine workflow metadata: standard sponsor request vs committee approach
+        const isApproach = unpopulatedReq.senderRole === "committee" && !!unpopulatedReq.opportunity;
+        const isAccepted = status === "accepted";
+        const entityTitle = request.event
+            ? request.event.title
+            : request.opportunity
+            ? request.opportunity.title
+            : "Sponsorship Item";
+
+        const statusNotifTitle = isApproach
+            ? isAccepted
+                ? "Approach Accepted! 🎉"
+                : "Approach Declined"
+            : isAccepted
+            ? "Request Accepted! 🎉"
+            : "Request Declined";
+
+        const statusNotifMessage = isApproach
+            ? `Your sponsorship approach for "${entityTitle}" was ${status}.`
+            : `Your sponsorship proposal for "${entityTitle}" was ${status}.`;
+
         const origSenderId = request.sender ? (request.sender._id || request.sender).toString() : null;
         const origReceiverId = request.receiver ? (request.receiver._id || request.receiver).toString() : null;
+        const senderRoleLabel = request.senderRole === "sponsor" ? "Corporate Sponsor" : "Committee Head";
+
+        // Persist Notification for original sender
+        let savedStatusNotif = null;
+        if (origSenderId) {
+            try {
+                const statusNotif = new Notification({
+                    recipient: origSenderId,
+                    sender: req.user._id,
+                    role: senderRoleLabel,
+                    type: isApproach ? "approach_status" : "request_status",
+                    title: statusNotifTitle,
+                    message: statusNotifMessage,
+                    relatedId: request._id,
+                    metadata: {
+                        requestId: request._id,
+                        status: request.status,
+                        eventId: request.event?._id || null,
+                        opportunityId: request.opportunity?._id || null,
+                    },
+                });
+                savedStatusNotif = await statusNotif.save();
+            } catch (statusNotifErr) {
+                console.error("Non-blocking status notification persistence error:", statusNotifErr.message);
+            }
+        }
+
+        // Socket.IO Real-Time Notifications to isolated recipient room
+        const io = req.app.get("io");
 
         if (io && origSenderId) {
             const senderRoom = `user:${origSenderId}`;
@@ -293,15 +403,83 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
                 receiver: origReceiverId,
                 event: request.event ? { _id: request.event._id, title: request.event.title } : null,
                 opportunity: request.opportunity ? { _id: request.opportunity._id, title: request.opportunity.title } : null,
+                notification: savedStatusNotif,
                 timestamp: new Date().toISOString(),
             };
             console.log(`[Socket.IO] Emitting 'request:statusChanged' to room: ${senderRoom}`);
             io.to(senderRoom).emit("request:statusChanged", statusPayload);
+            if (savedStatusNotif) {
+                io.to(senderRoom).emit("notification:new", savedStatusNotif);
+            }
         }
 
-        if (io && partnershipDoc) {
+        // Non-blocking Email Notification for Status Change (Feature 2)
+        if (request.sender && request.sender.email) {
+            const actorName = request.receiver
+                ? request.receiver.organizationName || request.receiver.name
+                : req.user.organizationName || req.user.name || "Partner";
+
+            sendRequestStatusEmail({
+                recipientEmail: request.sender.email,
+                recipientName: request.sender.name || request.sender.organizationName,
+                actorName,
+                status: request.status,
+                entityTitle,
+                isApproach,
+            }).catch((mailErr) => {
+                console.error("[EmailService] Non-blocking status email error:", mailErr.message);
+            });
+        }
+
+        // Partnership Real-Time Notifications + Emails (both Committee & Sponsor)
+        if (partnershipDoc) {
             const commId = partnershipDoc.committee ? (partnershipDoc.committee._id || partnershipDoc.committee).toString() : null;
             const sponId = partnershipDoc.sponsor ? (partnershipDoc.sponsor._id || partnershipDoc.sponsor).toString() : null;
+
+            let savedCommNotif = null;
+            let savedSponNotif = null;
+
+            try {
+                if (commId) {
+                    const commNotif = new Notification({
+                        recipient: commId,
+                        sender: sponId,
+                        role: "Committee Head",
+                        type: "partnership_created",
+                        title: "Partnership Created! 🤝",
+                        message: `A new active partnership has been created for "${entityTitle}".`,
+                        relatedId: partnershipDoc._id,
+                        metadata: {
+                            partnershipId: partnershipDoc._id,
+                            requestId: request._id,
+                            eventId: partnershipDoc.event?._id || null,
+                            opportunityId: partnershipDoc.opportunity?._id || null,
+                        },
+                    });
+                    savedCommNotif = await commNotif.save();
+                }
+
+                if (sponId) {
+                    const sponNotif = new Notification({
+                        recipient: sponId,
+                        sender: commId,
+                        role: "Corporate Sponsor",
+                        type: "partnership_created",
+                        title: "Partnership Created! 🤝",
+                        message: `A new active partnership has been created for "${entityTitle}".`,
+                        relatedId: partnershipDoc._id,
+                        metadata: {
+                            partnershipId: partnershipDoc._id,
+                            requestId: request._id,
+                            eventId: partnershipDoc.event?._id || null,
+                            opportunityId: partnershipDoc.opportunity?._id || null,
+                        },
+                    });
+                    savedSponNotif = await sponNotif.save();
+                }
+            } catch (partNotifErr) {
+                console.error("Non-blocking partnership notification persistence error:", partNotifErr.message);
+            }
 
             const pPayload = {
                 partnershipId: partnershipDoc._id,
@@ -314,13 +492,56 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
                 timestamp: partnershipDoc.createdAt || new Date().toISOString(),
             };
 
-            if (commId) {
+            if (io && commId) {
                 console.log(`[Socket.IO] Emitting 'partnership:created' to room: user:${commId}`);
-                io.to(`user:${commId}`).emit("partnership:created", pPayload);
+                io.to(`user:${commId}`).emit("partnership:created", {
+                    ...pPayload,
+                    notification: savedCommNotif,
+                });
+                if (savedCommNotif) {
+                    io.to(`user:${commId}`).emit("notification:new", savedCommNotif);
+                }
             }
-            if (sponId) {
+
+            if (io && sponId) {
                 console.log(`[Socket.IO] Emitting 'partnership:created' to room: user:${sponId}`);
-                io.to(`user:${sponId}`).emit("partnership:created", pPayload);
+                io.to(`user:${sponId}`).emit("partnership:created", {
+                    ...pPayload,
+                    notification: savedSponNotif,
+                });
+                if (savedSponNotif) {
+                    io.to(`user:${sponId}`).emit("notification:new", savedSponNotif);
+                }
+            }
+
+            // Non-blocking Email Notifications for Partnership Creation (Feature 2)
+            const commUser = partnershipDoc.committee;
+            const sponUser = partnershipDoc.sponsor;
+            const commName = commUser ? commUser.organizationName || commUser.name : "Committee Partner";
+            const sponName = sponUser ? sponUser.organizationName || sponUser.name : "Sponsor Partner";
+
+            if (commUser && commUser.email) {
+                sendPartnershipCreatedEmail({
+                    recipientEmail: commUser.email,
+                    recipientName: commName,
+                    partnerName: sponName,
+                    entityTitle,
+                    supportProvided: partnershipDoc.supportProvided,
+                }).catch((mailErr) => {
+                    console.error("[EmailService] Committee partnership email error:", mailErr.message);
+                });
+            }
+
+            if (sponUser && sponUser.email) {
+                sendPartnershipCreatedEmail({
+                    recipientEmail: sponUser.email,
+                    recipientName: sponName,
+                    partnerName: commName,
+                    entityTitle,
+                    supportProvided: partnershipDoc.supportProvided,
+                }).catch((mailErr) => {
+                    console.error("[EmailService] Sponsor partnership email error:", mailErr.message);
+                });
             }
         }
 

@@ -18,11 +18,16 @@ import {
   WifiOff,
 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
-import { markAllNotificationsAsRead, markNotificationAsRead } from "../../store/slices/notificationSlice";
+import {
+  markAllNotificationsAsRead,
+  markNotificationAsRead,
+  markNotificationReadThunk,
+  markAllNotificationsReadThunk,
+} from "../../store/slices/notificationSlice";
 import { subscribeConnectionStatus } from "../../services/socket";
 import Modal from "./Modal";
 
-export default function Topbar({ onOpenMobileSidebar, activeTab, currentUser, notifications: notifData, getTabTitle, onLogout }) {
+export default function Topbar({ onOpenMobileSidebar, activeTab, currentUser, getTabTitle, onLogout }) {
   const { theme, toggleTheme } = useTheme();
   const dispatch = useDispatch();
   const reduxNotifications = useSelector((state) => state.notifications?.items || []);
@@ -40,11 +45,22 @@ export default function Topbar({ onOpenMobileSidebar, activeTab, currentUser, no
     return () => unsubscribe();
   }, []);
 
-  const notifications = reduxNotifications.length > 0 ? reduxNotifications : (notifData || []);
+  const notifications = reduxNotifications;
   const unreadCount = notifications.filter((n) => n.unread).length;
 
   const markAllAsRead = () => {
     dispatch(markAllNotificationsAsRead());
+    dispatch(markAllNotificationsReadThunk());
+  };
+
+  const handleNotificationClick = (n) => {
+    if (n.unread) {
+      const targetId = n._id || n.id;
+      dispatch(markNotificationAsRead(targetId));
+      if (n._id) {
+        dispatch(markNotificationReadThunk(n._id));
+      }
+    }
   };
 
   const defaultGetTabTitle = (tab) => ({
@@ -156,7 +172,9 @@ export default function Topbar({ onOpenMobileSidebar, activeTab, currentUser, no
             >
               <Bell className="w-5 h-5 text-[var(--text-primary)]" />
               {unreadCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--accent-pink)] ring-2 ring-[var(--bg-card)] animate-pulse" />
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 text-[10px] font-bold rounded-full bg-[var(--accent-pink)] text-white flex items-center justify-center ring-2 ring-[var(--bg-card)] shadow-sm">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
               )}
             </button>
 
@@ -186,8 +204,8 @@ export default function Topbar({ onOpenMobileSidebar, activeTab, currentUser, no
                   ) : (
                     notifications.map((n) => (
                       <div
-                        key={n.id}
-                        onClick={() => n.unread && dispatch(markNotificationAsRead(n.id))}
+                        key={n._id || n.id}
+                        onClick={() => handleNotificationClick(n)}
                         className={`p-3.5 flex items-start gap-3 transition-colors ${
                           n.unread
                             ? "bg-[var(--bg-surface-alt)] cursor-pointer hover:bg-[var(--bg-surface-alt)]/80"
