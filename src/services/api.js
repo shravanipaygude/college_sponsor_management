@@ -1,4 +1,5 @@
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL =
+    import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 // Helper to retrieve JWT token from storage
 export const getAuthToken = () => {
@@ -34,10 +35,10 @@ export const mapEventToPost = (eventDoc) => {
         eventType: eventDoc.category || "Technical Festival",
         eventDate: eventDoc.eventDate
             ? new Date(eventDoc.eventDate).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-              })
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+            })
             : "TBD",
         participants: "500+",
         participantsNumeric: 500,
@@ -123,8 +124,8 @@ export const mapOpportunityPayload = (oppData) => {
         requirements: Array.isArray(oppData.expectations)
             ? oppData.expectations
             : Array.isArray(oppData.lookingFor)
-            ? oppData.lookingFor
-            : [],
+                ? oppData.lookingFor
+                : [],
         category: oppData.industry || oppData.category || "AI / Technology",
         interestedIn: Array.isArray(oppData.interestedIn) ? oppData.interestedIn : [],
         status: "open",
@@ -192,8 +193,8 @@ export const mapRequestToUI = (reqDoc) => {
             reqDoc.status === "accepted"
                 ? "Accepted"
                 : reqDoc.status === "declined"
-                ? "Declined"
-                : "Pending",
+                    ? "Declined"
+                    : "Pending",
         createdAt: reqDoc.createdAt
             ? new Date(reqDoc.createdAt).toLocaleDateString()
             : "Recently",
