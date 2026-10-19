@@ -16,6 +16,7 @@ services:
       context: .
       args:
         VITE_API_URL: http://localhost:5000/api
+        VITE_SOCKET_URL: http://localhost:5000
     container_name: sponnect-frontend
     ports:
       - "8080:80"

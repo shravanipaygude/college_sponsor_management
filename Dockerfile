@@ -12,6 +12,9 @@ COPY . .
 ARG VITE_API_URL=http://localhost:5000/api
 ENV VITE_API_URL=$VITE_API_URL
 
+ARG VITE_SOCKET_URL=http://localhost:5000
+ENV VITE_SOCKET_URL=$VITE_SOCKET_URL
+
 RUN npm run build
 
 # Stage 2: Serve the production build with Nginx
